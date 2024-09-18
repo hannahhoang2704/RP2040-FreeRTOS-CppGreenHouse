@@ -15,10 +15,12 @@ PicoI2C *PicoI2C::i2c0_instance{nullptr};
 PicoI2C *PicoI2C::i2c1_instance{nullptr};
 void PicoI2C::i2c0_irq(void) {
     if(i2c0_instance) i2c0_instance->isr();
+    else irq_set_enabled(I2C0_IRQ, false);
 }
 
 void PicoI2C::i2c1_irq(void) {
     if(i2c1_instance) i2c1_instance->isr();
+    else irq_set_enabled(I2C1_IRQ, false); // disable interrupt if we don't have instance
 }
 
 PicoI2C::PicoI2C(uint bus_nr, uint speed) {
@@ -48,19 +50,33 @@ PicoI2C::PicoI2C(uint bus_nr, uint speed) {
     gpio_set_function(scl, GPIO_FUNC_I2C);
     irq_set_enabled(irqn, false);
     irq_set_exclusive_handler(irqn, bus_nr ? i2c1_irq : i2c0_irq);
+    if(bus_nr) i2c1_instance = this;
+    else i2c0_instance = this;
 }
 
-#if 0
+#if 1
 uint PicoI2C::write(uint8_t addr, const uint8_t *buffer, uint length) {
+    assert(length > 0);
     std::lock_guard<Fmutex> exclusive(access);
-    task = xTaskGetCurrentTaskHandle();
-    uint count = 0;
+    task_to_notify = xTaskGetCurrentTaskHandle();
+
+    i2c->hw->enable = 0;
+    i2c->hw->tar = addr;
+    i2c->hw->enable = 1;
+    i2c->hw->intr_mask = I2C_IC_INTR_MASK_M_STOP_DET_BITS | I2C_IC_INTR_MASK_M_TX_EMPTY_BITS;
+    i2c->restart_on_next = false;
     // setup transfer
+    wbuf = buffer;
+    wctr = length;
+    rbuf = nullptr;
+    rctr = 0;
+    tx_write_first_byte();
+    tx_fill_fifo();
 
     // enable interrupts
     irq_set_enabled(irqn, true);
-
-    count = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000));
+    // wait for stop interrupt
+    auto count = length - ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000));
     // if count != length transaction failed
     irq_set_enabled(irqn, false);
 
@@ -68,7 +84,28 @@ uint PicoI2C::write(uint8_t addr, const uint8_t *buffer, uint length) {
 }
 #endif
 
-#if 1
+void PicoI2C::tx_write_first_byte() {
+    bool last = wctr == 1;
+    i2c->hw->data_cmd =
+            // There may be a restart needed instead of (stop)-start
+            bool_to_bit(i2c->restart_on_next) << I2C_IC_DATA_CMD_RESTART_LSB |
+            // There may be just one byte to write so check if stop is needed,
+            bool_to_bit(last) << I2C_IC_DATA_CMD_STOP_LSB |
+            *wbuf++;
+    --wctr;
+}
+
+
+void PicoI2C::tx_fill_fifo()
+{
+    while(wctr > 0 && i2c_get_write_available(i2c) > 0) {
+        bool last = wctr == 1;
+        i2c->hw->data_cmd = bool_to_bit(last) << I2C_IC_DATA_CMD_STOP_LSB | *wbuf++;
+        --wctr;
+    }
+}
+
+#if 0
 uint PicoI2C::write(uint8_t addr, const uint8_t *buffer, uint length) {
 {
     std::lock_guard<Fmutex> exclusive(access);
@@ -128,13 +165,19 @@ uint PicoI2C::transaction(uint8_t addr, const uint8_t *wbuffer, uint wlength, ui
 }
 
 
-#define done true
-uint32_t byte_count = 0;
 
 void PicoI2C::isr() {
     BaseType_t hpw = pdFALSE;
     // handle the transaction here
+    if(i2c->hw->intr_stat & I2C_IC_INTR_MASK_M_TX_EMPTY_BITS) {
+        tx_fill_fifo();
+    }
+
     // notify if we are done
-    if(done) xTaskNotifyFromISR(task, byte_count, eSetValueWithOverwrite, &hpw);
+    if(i2c->hw->intr_stat & I2C_IC_INTR_MASK_M_STOP_DET_BITS) {
+        i2c->hw->intr_mask = I2C_IC_INTR_MASK_M_STOP_DET_RESET |I2C_IC_INTR_MASK_M_TX_EMPTY_RESET;
+        (void) i2c->hw->clr_stop_det;
+        xTaskNotifyFromISR(task_to_notify, (rbuf ? rctr : wctr), eSetValueWithOverwrite, &hpw);
+    }
     portYIELD_FROM_ISR(hpw);
 }

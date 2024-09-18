@@ -17,12 +17,18 @@ public:
     uint read(uint8_t addr, uint8_t *buffer, uint length);
     uint transaction(uint8_t addr, const uint8_t *wbuffer, uint wlength, uint8_t *rbuffer, uint rlength);
 private:
-    void isr();
     i2c_inst *i2c;
     int irqn;
-    TaskHandle_t task;
+    TaskHandle_t task_to_notify;
     Fmutex access;
+    const uint8_t *wbuf;
+    uint wctr;
+    uint8_t *rbuf;
+    uint rctr;
+    void tx_fill_fifo();
+    void tx_write_first_byte();
 
+    void isr();
     static void i2c0_irq(void);
     static void i2c1_irq(void);
     static PicoI2C *i2c0_instance;

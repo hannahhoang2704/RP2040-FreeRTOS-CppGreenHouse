@@ -10,6 +10,9 @@ SET(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-KernelV10.6.2)
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
 
+# Set board type because we are building for PicoW
+set(PICO_BOARD pico_w)
+
 # Define project
 project(${ProjectName})
 
