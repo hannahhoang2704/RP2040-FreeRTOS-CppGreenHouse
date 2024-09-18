@@ -6,6 +6,10 @@ add_executable(${ProjectName}
         blinker.cpp
         blinker.h
 
+        ipstack/IPStack.cpp
+        ipstack/IPStack.h
+        ipstack/lwipopts.h
+
         i2c/PicoI2C.cpp
         i2c/PicoI2C.h
 
@@ -35,13 +39,23 @@ target_include_directories(${ProjectName} PRIVATE
         uart
         i2c
         display
+        ipstack
+)
+
+target_compile_definitions(${ProjectName} PRIVATE
+        WIFI_SSID=\"${WIFI_SSID}\"
+        WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
+        NO_SYS=0            # don't want NO_SYS (generally this would be in your lwipopts.h)
+        PICO_CYW43_ARCH_DEFAULT_COUNTRY_CODE=CYW43_COUNTRY_FINLAND
 )
 
 target_link_libraries(${ProjectName} 
-    pico_stdlib
-    hardware_i2c
-    FreeRTOS-Kernel-Heap4
-    )
+        pico_stdlib
+        hardware_i2c
+        FreeRTOS-Kernel-Heap4
+        pico_cyw43_arch_lwip_sys_freertos
+
+)
 
 pico_add_extra_outputs(${ProjectName})
 
