@@ -1,45 +1,26 @@
+file(GLOB keijo_sources
+        keijo/*.cpp
+        keijo/*.c
+        keijo/*/*.cpp
+        keijo/*/*.c)
+file(GLOB pico_utils_sources
+        pico_utils/*.cpp)
+file(GLOB taskers_sources
+        taskers/*.cpp)
+
 add_executable(${ProjectName}
         main.cpp
-        critical_section.cpp
-        Fmutex.cpp
-        Fmutex.h
-        blinker.cpp
-        blinker.h
-
-        ipstack/IPStack.cpp
-        ipstack/IPStack.h
-        ipstack/lwipopts.h
-
-        i2c/PicoI2C.cpp
-        i2c/PicoI2C.h
-
-        uart/PicoOsUart.cpp
-        uart/PicoOsUart.h
-
-        modbus/nanomodbus.h
-        modbus/nanomodbus.c
-        modbus/ModbusRegister.cpp
-        modbus/ModbusRegister.h
-        modbus/ModbusClient.cpp
-        modbus/ModbusClient.h
-
-        display/framebuf.cpp
-        display/framebuf.h
-        display/mono_vlsb.cpp
-        display/mono_vlsb.h
-#        display/ssd1306.cpp
-#        display/ssd1306.h
-        display/ssd1306os.h
-        display/ssd1306os.cpp
+        ${keijo_sources}
+        ${pico_utils_sources}
+        ${taskers_sources}
 )
 
 target_include_directories(${ProjectName} PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}
-        modbus
-        uart
-        i2c
-        display
-        ipstack
+        ${CMAKE_CURRENT_LIST_DIR}
+        keijo
+        pico_utils
+        taskers
+        keijo/ipstack
 )
 
 target_compile_definitions(${ProjectName} PRIVATE
@@ -49,12 +30,12 @@ target_compile_definitions(${ProjectName} PRIVATE
         PICO_CYW43_ARCH_DEFAULT_COUNTRY_CODE=CYW43_COUNTRY_FINLAND
 )
 
-target_link_libraries(${ProjectName} 
+target_link_libraries(${ProjectName}
         pico_stdlib
         hardware_i2c
+        hardware_pwm
         FreeRTOS-Kernel-Heap4
         pico_cyw43_arch_lwip_sys_freertos
-
 )
 
 pico_add_extra_outputs(${ProjectName})

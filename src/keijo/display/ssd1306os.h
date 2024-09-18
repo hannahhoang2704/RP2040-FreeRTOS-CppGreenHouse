@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "mono_vlsb.h"
-#include "PicoI2C.h"
+#include "i2c/PicoI2C.h"
 
 class ssd1306os : public mono_vlsb {
 public:

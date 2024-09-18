@@ -7,7 +7,7 @@
 
 #include <memory>
 #include "nanomodbus.h"
-#include "PicoOsUart.h"
+#include "uart/PicoOsUart.h"
 
 // Wrapper class does not implement full nanomodbus API
 // addresses are wire addresses (numbering starts from zero)
