@@ -363,7 +363,7 @@ typedef QueueHandle_t SemaphoreHandle_t;
  *          // For some reason due to the nature of the code further calls to
  *          // xSemaphoreTakeRecursive() are made on the same mutex.  In real
  *          // code these would not be just sequential calls as this would make
- *          // no sense.  Instead the calls are likely to be buried inside
+ *          // no automate_greenhouse.  Instead the calls are likely to be buried inside
  *          // a more complex call structure.
  *          xSemaphoreTakeRecursive( xMutex, ( TickType_t ) 10 );
  *          xSemaphoreTakeRecursive( xMutex, ( TickType_t ) 10 );
@@ -515,7 +515,7 @@ typedef QueueHandle_t SemaphoreHandle_t;
  *          // For some reason due to the nature of the code further calls to
  *          // xSemaphoreTakeRecursive() are made on the same mutex.  In real
  *          // code these would not be just sequential calls as this would make
- *          // no sense.  Instead the calls are likely to be buried inside
+ *          // no automate_greenhouse.  Instead the calls are likely to be buried inside
  *          // a more complex call structure.
  *          xSemaphoreTakeRecursive( xMutex, ( TickType_t ) 10 );
  *          xSemaphoreTakeRecursive( xMutex, ( TickType_t ) 10 );

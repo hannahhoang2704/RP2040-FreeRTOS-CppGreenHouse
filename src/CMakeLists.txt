@@ -1,21 +1,22 @@
-file(GLOB keijo_sources
+file(GLOB_RECURSE keijo_sources
         keijo/*.cpp
         keijo/*.c
-        keijo/*/*.cpp
-        keijo/*/*.c)
+)
 file(GLOB pico_utils_sources
-        pico_utils/*.cpp)
+        pico_utils/*.cpp
+)
 file(GLOB taskers_sources
-        taskers/*.cpp)
+        taskers/*.cpp
+)
 
-add_executable(${ProjectName}
+add_executable(${PROJECT_NAME}
         main.cpp
         ${keijo_sources}
         ${pico_utils_sources}
         ${taskers_sources}
 )
 
-target_include_directories(${ProjectName} PRIVATE
+target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
         keijo
         pico_utils
@@ -23,14 +24,14 @@ target_include_directories(${ProjectName} PRIVATE
         keijo/ipstack
 )
 
-target_compile_definitions(${ProjectName} PRIVATE
+target_compile_definitions(${PROJECT_NAME} PRIVATE
         WIFI_SSID=\"${WIFI_SSID}\"
         WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
         NO_SYS=0            # don't want NO_SYS (generally this would be in your lwipopts.h)
         PICO_CYW43_ARCH_DEFAULT_COUNTRY_CODE=CYW43_COUNTRY_FINLAND
 )
 
-target_link_libraries(${ProjectName}
+target_link_libraries(${PROJECT_NAME}
         pico_stdlib
         hardware_i2c
         hardware_pwm
@@ -38,8 +39,8 @@ target_link_libraries(${ProjectName}
         pico_cyw43_arch_lwip_sys_freertos
 )
 
-pico_add_extra_outputs(${ProjectName})
+pico_add_extra_outputs(${PROJECT_NAME})
 
 # Disable usb output, enable uart output
 pico_enable_stdio_usb(${PROJECT_NAME} 0)
-pico_enable_stdio_uart(${PROJECT_NAME} 1)
+pico_enable_stdio_uart(${PROJECT_NAME} 0)
