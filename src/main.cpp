@@ -100,6 +100,7 @@ void serial_task(void *param)
 
 void modbus_task(void *param);
 void display_task(void *param);
+void i2c_task(void *param);
 
 
 int main()
@@ -118,6 +119,9 @@ int main()
 
 
     xTaskCreate(display_task, "SSD1306", 512, (void *) nullptr,
+                tskIDLE_PRIORITY + 1, nullptr);
+
+    xTaskCreate(i2c_task, "i2c test", 512, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
 
     vTaskStartScheduler();
@@ -199,5 +203,42 @@ void display_task(void *param)
     while(true) {
         vTaskDelay(100);
     }
+
+}
+
+void i2c_task(void *param) {
+    auto i2cbus{std::make_shared<PicoI2C>(0, 100000)};
+
+    const uint led_pin = 21;
+    const uint delay = pdMS_TO_TICKS(250);
+    gpio_init(led_pin);
+    gpio_set_dir(led_pin, GPIO_OUT);
+
+    uint8_t buffer[64] = {0};
+    i2cbus->write(0x50, buffer, 2);
+
+    auto rv = i2cbus->read(0x50, buffer, 64);
+    printf("rv=%u\n", rv);
+    for(int i = 0; i < 64; ++i) {
+        printf("%c", isprint(buffer[i]) ? buffer[i] : '_');
+    }
+    printf("\n");
+
+    buffer[0]=0;
+    buffer[1]=64;
+    rv = i2cbus->transaction(0x50, buffer, 2, buffer, 64);
+    printf("rv=%u\n", rv);
+    for(int i = 0; i < 64; ++i) {
+        printf("%c", isprint(buffer[i]) ? buffer[i] : '_');
+    }
+    printf("\n");
+
+    while(true) {
+        gpio_put(led_pin, 1);
+        vTaskDelay(delay);
+        gpio_put(led_pin, 0);
+        vTaskDelay(delay);
+    }
+
 
 }
