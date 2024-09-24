@@ -7,13 +7,14 @@
 #include "hardware/gpio.h"
 #include "IPStack.h"
 
+/*
 #include "hardware/timer.h"
 extern "C" {
 uint32_t read_runtime_ctr(void) {
     return timer_hw->timerawl;
 }
 }
-
+*/
 
 #if 1
 #define HTTP_SERVER        "3.224.58.169"
@@ -120,18 +121,12 @@ void test_task(void *param) {
 
 
 
-int main()
+int ipstack_tester()
 {
     stdio_init_all();
 
-    //xTaskCreate(blink_task, "LED_1", 256, (void *) &lp1, tskIDLE_PRIORITY + 1, nullptr);
-    //xTaskCreate(gpio_task, "BUTTON", 256, (void *) nullptr, tskIDLE_PRIORITY + 1, nullptr);
-    //xTaskCreate(serial_task, "UART1", 256, (void *) nullptr,
-    //            tskIDLE_PRIORITY + 1, nullptr);
-
     xTaskCreate(test_task, "http", 1024, (void *) nullptr,
                 tskIDLE_PRIORITY + 1, nullptr);
-
 
     vTaskStartScheduler();
 

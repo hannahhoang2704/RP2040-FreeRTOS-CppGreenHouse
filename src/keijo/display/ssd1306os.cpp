@@ -49,7 +49,7 @@ ssd1306os::ssd1306os(std::shared_ptr<PicoI2C> i2c, uint16_t device_address, uint
         ssd1306_i2c(i2c), address(device_address) {
     // set control byte at the beginning of frame buffer
     buffer.get()[0] = 0x40;
-    init();
+    // init();
 }
 
 void ssd1306os::init() {
