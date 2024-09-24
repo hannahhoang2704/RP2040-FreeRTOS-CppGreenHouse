@@ -5,13 +5,11 @@
 #include "Greenhouse.h"
 #include "Display.h"
 
-/*
 extern "C" {
 uint32_t read_runtime_ctr(void) {
     return timer_hw->timerawl;
 }
 }
-*/
 
 #define MODBUS_STOP_BITS 2 // for real system (pico simualtor also requires 2 stop bits)
 #define MODBUS_BAUD_RATE 9600
@@ -31,7 +29,7 @@ uint32_t read_runtime_ctr(void) {
 using namespace std;
 
 int main() {
-    /*
+
     auto CLI_UART = make_shared<PicoOsUart>(
             CLI_UART_NR,
             CLI_UART_TX_PIN,
@@ -52,7 +50,6 @@ int main() {
     auto rtu_client = make_shared<ModbusClient>(modbusUART);
     new Greenhouse(CLI_UART, rtu_client, LED2);
 #endif
-
     auto OLED_SDP600_I2C = make_shared<PicoI2C>(
             OLED_SDP_I2C_BUS,
             OLED_SDP_I2C_BAUD);
@@ -61,28 +58,4 @@ int main() {
 
     CLI_UART->send("Initializing scheduler...\n");
     vTaskStartScheduler();
-    */
-    stdio_init_all();
-
-    auto i2cbus{std::make_shared<PicoI2C>(0, 100000)};
-
-    uint8_t buffer[64] = {0, 'r', 'o', 'n', '1'};
-    i2cbus->write(0x50, buffer, 2);
-
-    auto rv = i2cbus->read(0x50, buffer, 64);
-    printf("rv=%u\n", rv);
-    for(int i = 0; i < 64; ++i) {
-        printf("%c", isprint(buffer[i]) ? buffer[i] : '_');
-    }
-    printf("\n");
-
-    buffer[0]=0;
-    buffer[1]=64;
-    rv = i2cbus->transaction(0x50, buffer, 2, buffer, 64);
-    printf("rv=%u\n", rv);
-    for(int i = 0; i < 64; ++i) {
-        printf("%c", isprint(buffer[i]) ? buffer[i] : '_');
-    }
-    printf("\n");
-
 }

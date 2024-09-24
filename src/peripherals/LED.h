@@ -6,12 +6,6 @@
 #include <hardware/pwm.h>
 #include <string>
 
-#define DIVIDER 125
-#define WRAP    99
-
-#define PWM_ON true
-#define INIT_LEVEL  2
-
 #define LED1 22
 #define LED2 21
 #define LED3 20
@@ -19,12 +13,16 @@
 
 class LED {
 public:
-    LED(uint pin, bool PWM_on = PWM_ON);
+    LED(uint pin, bool PWM_on = true);
     void put(bool state);
     void toggle();
     std::string get_name() const;
 
 private:
+    static const uint16_t DIVIDER{125};
+    static const uint16_t WRAP{99};
+    static const uint16_t INIT_LEVEL{2};
+
     uint mPin;
     bool mPWMon;
     uint mSlice;
