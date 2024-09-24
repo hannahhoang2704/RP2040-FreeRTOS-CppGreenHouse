@@ -2,8 +2,8 @@ file(GLOB_RECURSE keijo_sources
         keijo/*.cpp
         keijo/*.c
 )
-file(GLOB pico_utils_sources
-        pico_utils/*.cpp
+file(GLOB peripherals_sources
+        peripherals/*.cpp
 )
 file(GLOB taskers_sources
         taskers/*.cpp
@@ -12,14 +12,14 @@ file(GLOB taskers_sources
 add_executable(${PROJECT_NAME}
         main.cpp
         ${keijo_sources}
-        ${pico_utils_sources}
+        ${peripherals_sources}
         ${taskers_sources}
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
         keijo
-        pico_utils
+        peripherals
         taskers
         keijo/ipstack
 )
@@ -43,4 +43,4 @@ pico_add_extra_outputs(${PROJECT_NAME})
 
 # Disable usb output, enable uart output
 pico_enable_stdio_usb(${PROJECT_NAME} 0)
-pico_enable_stdio_uart(${PROJECT_NAME} 0)
+pico_enable_stdio_uart(${PROJECT_NAME} 1)

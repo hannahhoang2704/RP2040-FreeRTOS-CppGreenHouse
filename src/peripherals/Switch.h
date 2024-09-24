@@ -5,8 +5,6 @@ namespace SW {
     class Switch {
 
     };
-
-
 }
 
 
