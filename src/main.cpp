@@ -4,6 +4,7 @@
 #include "uart/PicoOsUart.h"
 #include "Greenhouse.h"
 #include "Display.h"
+#include "Logger.h"
 
 extern "C" {
 uint32_t read_runtime_ctr(void) {
@@ -55,7 +56,10 @@ int main() {
             OLED_SDP_I2C_BAUD);
 
     new Display(OLED_SDP600_I2C);
+    auto logger = make_shared<Logger>(CLI_UART);
+    logger->log("Timestamp: %u, data1 is %d\n", read_runtime_ctr(), 10, 0);
 
-    CLI_UART->send("Initializing scheduler...\n");
+
+    logger->log("Initializing scheduler...\n", read_runtime_ctr(),0,0);
     vTaskStartScheduler();
 }
