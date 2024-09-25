@@ -4,7 +4,6 @@
 #include "uart/PicoOsUart.h"
 #include "Greenhouse.h"
 #include "Display.h"
-#include "Logger.h"
 
 extern "C" {
 uint32_t read_runtime_ctr(void) {
@@ -38,7 +37,8 @@ int main() {
             CLI_BAUD_RATE,
             CLI_STOP_BITS);
 
-    Logger::log("Boot!\n", 0, 0);
+    CLI_UART->send("\nBoot!\n");
+
 #if 0 // program gets stuck at writes or reads if uart is not connected
     auto modbusUART = make_shared<PicoOsUart>(
             MODBUS_UART_NR,
@@ -55,10 +55,7 @@ int main() {
             OLED_SDP_I2C_BAUD);
 
     new Display(OLED_SDP600_I2C);
-    new Logger(CLI_UART);
 
-    Logger::log("Data 1: %u\n", 10);
-
-
+    CLI_UART->send("Initializing scheduler...\n");
     vTaskStartScheduler();
 }
