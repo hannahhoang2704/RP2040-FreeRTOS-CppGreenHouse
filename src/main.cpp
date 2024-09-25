@@ -55,11 +55,10 @@ int main() {
             OLED_SDP_I2C_BAUD);
 
     new Display(OLED_SDP600_I2C);
-    auto logger = make_shared<Logger>(CLI_UART);
+    new Logger(CLI_UART);
 
-    logger->log("Data 1: %u\n", 10, 0);
+    Logger::log("Data 1: %u\n", 10);
 
 
-//    logger->log("Initializing scheduler...\n", read_runtime_ctr(),0,0);
     vTaskStartScheduler();
 }

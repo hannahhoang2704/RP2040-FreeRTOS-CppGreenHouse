@@ -1,4 +1,5 @@
 #include "Greenhouse.h"
+#include "Logger.h"
 
 using namespace std;
 
@@ -17,14 +18,14 @@ Greenhouse::Greenhouse(shared_ptr<PicoOsUart> uart_sp, shared_ptr<ModbusClient> 
                     (void *) this,
                     tskIDLE_PRIORITY + 3,
                     &mTaskHandle) == pdPASS) {
-        mCLI_UART->send("Created GREENHOUSE task.\n");
+        Logger::log("Created GREENHOUSE task.\n");
     } else {
-        mCLI_UART->send("Failed to create GREENHOUSE task.\n");
+        Logger::log("Failed to create GREENHOUSE task.\n");
     }
 }
 
 void Greenhouse::automate_greenhouse() {
-    mCLI_UART->send("Initiated SENSOR task\n");
+    Logger::log("Initiated GREENHOUSE task\n");
     mFan.write(100);
     char msg[64];
     while (true) {

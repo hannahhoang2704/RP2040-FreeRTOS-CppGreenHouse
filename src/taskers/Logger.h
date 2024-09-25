@@ -21,7 +21,7 @@
 class Logger{
 public:
     Logger(std::shared_ptr<PicoOsUart> uart_sp);
-    static void log(const char *format, uint32_t d1, uint32_t d2);
+    static void log(const char *format, uint32_t d1=0, uint32_t d2=0);
 
 private:
     void run();
@@ -29,9 +29,12 @@ private:
     TaskHandle_t mTaskHandle;
     std::shared_ptr<PicoOsUart> mCLI_UART;
     static QueueHandle_t mSyslog_queue;
+    char buffer[BUFFER_SIZE];
+    int offset;
     struct debugEvent {
         const char *format;
-        uint32_t data[3];
+        uint64_t timestamp;
+        uint32_t data[2];
     }mDebugEvent;
 
 };
