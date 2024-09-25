@@ -8,14 +8,14 @@ namespace EEPROM {
 
     class SingleStorage {
     public:
-        SingleStorage(std::shared_ptr<PicoI2C> i2c_sp, uint8_t bytes, uint8_t deviceAddress = AT24C256_DEV_ADDRESS);
+        SingleStorage(std::shared_ptr<PicoI2C> i2c_sp, uint8_t data_size, uint8_t device_address = AT24C256_DEV_ADDRESS);
         int get();
         void put(int data);
 
     private:
         void apply_reg_addr();
 
-        static const uint8_t AT24C256_DEV_ADDRESS{0x05};
+        static const uint8_t AT24C256_DEV_ADDRESS{0x50};
         static const uint16_t AT24C256_TOP_ADDRESS{0xFFFF};
         static const uint8_t BITS_PER_BYTE{8};
         static const uint8_t REG_ADDR_LEN{2};

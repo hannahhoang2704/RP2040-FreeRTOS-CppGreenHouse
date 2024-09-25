@@ -4,10 +4,10 @@
 
 static uint16_t nextFreeAddress{0};
 
-EEPROM::SingleStorage::SingleStorage(std::shared_ptr<PicoI2C> i2c_sp, uint8_t bytes, uint8_t deviceAddress) :
+EEPROM::SingleStorage::SingleStorage(std::shared_ptr<PicoI2C> i2c_sp, uint8_t data_size, uint8_t device_address):
         mI2C(std::move(i2c_sp)),
-        mBytes(bytes),
-        mDevAddr(deviceAddress),
+        mBytes(data_size),
+        mDevAddr(device_address),
         mRegAddr(nextFreeAddress)
 {
     nextFreeAddress += 2 << (mBytes * BITS_PER_BYTE);
