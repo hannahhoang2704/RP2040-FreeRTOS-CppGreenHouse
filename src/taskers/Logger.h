@@ -8,6 +8,8 @@
 #include <utility>
 #include <iostream>
 #include <cstring>
+#include <hardware/timer.h>
+
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
@@ -19,18 +21,18 @@
 class Logger{
 public:
     Logger(std::shared_ptr<PicoOsUart> uart_sp);
-    void log(const char *format, uint32_t timestamp, uint32_t d1, uint32_t d2);
+    static void log(const char *format, uint32_t d1, uint32_t d2);
 
 private:
     void run();
     static void logger_task(void * params);
     TaskHandle_t mTaskHandle;
     std::shared_ptr<PicoOsUart> mCLI_UART;
-    QueueHandle_t mSyslog_queue;
+    static QueueHandle_t mSyslog_queue;
     struct debugEvent {
         const char *format;
         uint32_t data[3];
-    };
+    }mDebugEvent;
 
 };
 #endif //FREERTOS_GREENHOUSE_LOGGER_H

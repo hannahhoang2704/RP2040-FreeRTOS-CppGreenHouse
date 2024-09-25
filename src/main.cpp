@@ -38,8 +38,7 @@ int main() {
             CLI_BAUD_RATE,
             CLI_STOP_BITS);
 
-    CLI_UART->send("\nBoot!\n");
-
+    Logger::log("Boot!\n", 0, 0);
 #if 0 // program gets stuck at writes or reads if uart is not connected
     auto modbusUART = make_shared<PicoOsUart>(
             MODBUS_UART_NR,
@@ -57,9 +56,10 @@ int main() {
 
     new Display(OLED_SDP600_I2C);
     auto logger = make_shared<Logger>(CLI_UART);
-    logger->log("Timestamp: %u, data1 is %d\n", read_runtime_ctr(), 10, 0);
+
+    logger->log("Data 1: %u\n", 10, 0);
 
 
-    logger->log("Initializing scheduler...\n", read_runtime_ctr(),0,0);
+//    logger->log("Initializing scheduler...\n", read_runtime_ctr(),0,0);
     vTaskStartScheduler();
 }

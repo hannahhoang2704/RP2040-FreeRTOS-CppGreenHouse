@@ -3,8 +3,9 @@
 //
 #include "Logger.h"
 
+QueueHandle_t Logger::mSyslog_queue = xQueueCreate(30, sizeof(debugEvent));
+
 Logger::Logger(std::shared_ptr<PicoOsUart> uart_sp): mCLI_UART(std::move(uart_sp)){
-    mSyslog_queue = xQueueCreate(30, sizeof(debugEvent));
     vQueueAddToRegistry(mSyslog_queue, "Syslog");
     if(xTaskCreate(Logger::logger_task, "logger_task", 512, (void *) this,
                    tskIDLE_PRIORITY + 1,&mTaskHandle) == pdPASS){
@@ -19,18 +20,18 @@ void Logger::logger_task(void *params) {
     logger->run();
 }
 
-void Logger::log(const char *format, uint32_t timestamp, uint32_t d1, uint32_t d2) {
+void Logger::log(const char *format, uint32_t d1, uint32_t d2) {
+    uint32_t timestamp = time_us_64() / 1000;
     debugEvent event = {.format = format, .data = {timestamp, d1, d2}};
     xQueueSendToBack(mSyslog_queue, &event, 0);
 }
 
 void Logger::run(){
     char buffer[BUFFER_SIZE];
-    debugEvent event;
     while(true){
-        if(xQueueReceive(mSyslog_queue, &event, portMAX_DELAY) == pdTRUE){
-            int offset = snprintf(buffer, sizeof(buffer), "[%u ms] ", event.data[0]);
-            snprintf(buffer + offset, sizeof(buffer) - offset, event.format, event.data[1], event.data[2]);
+        if(xQueueReceive(mSyslog_queue, &mDebugEvent, portMAX_DELAY) == pdTRUE){
+            int offset = snprintf(buffer, sizeof(buffer), "[%u ms] ", mDebugEvent.data[0]);
+            snprintf(buffer + offset, sizeof(buffer) - offset, mDebugEvent.format, mDebugEvent.data[1], mDebugEvent.data[2]);
             mCLI_UART->send(buffer);
         }
     }
