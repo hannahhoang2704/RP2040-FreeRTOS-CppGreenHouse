@@ -21,7 +21,7 @@ void Logger::logger_task(void *params) {
 }
 
 void Logger::log(const char *format, uint32_t d1, uint32_t d2) {
-    uint64_t timestamp = time_us_32() / 1000000;
+    uint64_t timestamp = time_us_64() / 1000000;
     debugEvent event = {.format = format, .timestamp = timestamp, .data = { d1, d2}};
     xQueueSendToBack(mSyslog_queue, &event, 0);
 }
