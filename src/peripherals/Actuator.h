@@ -19,7 +19,7 @@ namespace Actuator {
             int regFanPower = MIO12V.regAddrInput,
             int regFanCounter = MIO12V.regAddrOutput);
 
-        void set_power(int16_t newPower);
+        void set_power(int16_t permille);
         bool running();
         int16_t get_power() const;
         int16_t read_power();
