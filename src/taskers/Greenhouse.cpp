@@ -3,7 +3,7 @@
 
 using namespace std;
 
-Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client, uint led_pin) :
+Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client) :
         mTaskName("Greenhouse"),
         mGMP252(modbus_client),
         mHMP60(modbus_client),

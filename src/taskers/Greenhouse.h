@@ -13,7 +13,7 @@
 
 class Greenhouse {
 public:
-    Greenhouse(const std::shared_ptr<ModbusClient>& modbus_client, uint lep_pin);
+    Greenhouse(const std::shared_ptr<ModbusClient>& modbus_client);
 
     const std::string mTaskName;
 private:
