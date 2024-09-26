@@ -4,6 +4,8 @@
 #include "uart/PicoOsUart.h"
 #include "Greenhouse.h"
 #include "Display.h"
+#include "SwitchHandler.h"
+#include "Switch.h"
 #include "Logger.h"
 
 extern "C" {
@@ -60,6 +62,15 @@ int main() {
 
     Logger::log("Data 1: %u\n", 10);
 
+    new SW::Button(SwitchHandler::SW_2);
+    new SW::Button(SwitchHandler::SW_1);
+    new SW::Button(SwitchHandler::SW_0);
+    new SW::Button(SwitchHandler::ROT_SW);
+    new SW::Rotor();
+
+    new SwitchHandler(CLI_UART);
+
+    CLI_UART->send("Initializing scheduler...\n");
 
     vTaskStartScheduler();
 }
