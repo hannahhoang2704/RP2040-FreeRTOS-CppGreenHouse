@@ -5,7 +5,6 @@
 #include <memory>
 #include "i2c/PicoI2C.h"
 #include "display/ssd1306os.h"
-#include "display/ssd1306.h"
 
 class Display {
 public:
