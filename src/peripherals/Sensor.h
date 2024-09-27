@@ -6,61 +6,76 @@
 
 namespace Sensor {
 
-    const struct {
+    static const struct {
         int servAddr = 240;
         int regAddrCO2 = 0x0000;
         int regAddrTemp = 0x0004;
     } GMP252_s;
 
-    const struct {
+    static const struct {
         int servAddr = 241;
         int regAddrRelHum = 256;
         int regAddrTemp = 257;
     } HMP60_s;
 
-    class GMP252 {
-    public:
-        GMP252(const std::shared_ptr<ModbusClient>& modbusClient);
-        float update_co2();
-        float update_temperature();
-        float co2() const;
-        float temperature() const;
-
-    private:
-        ModbusRegister mCO2_low;
-        ModbusRegister mCO2_high;
-        ModbusRegister mTemp_low;
-        ModbusRegister mTemp_high;
-
-        union {
-            uint32_t u32;
-            float f = 0;
-        } mCO2;
-
-        union {
-            uint32_t u32;
-            float f = 0;
-        } mTemp;
-
+    union u32_f_u {
+        uint32_t u32;
+        float f = 0;
     };
 
-    class HMP60 {
+    union u16_u32_f_u {
+        uint16_t u16;
+        uint32_t u32;
+        float f = 0;
+    };
+
+    class CO2 {
     public:
-        HMP60(const std::shared_ptr<ModbusClient>& modbusClient);
-        float update_relHum();
-        float update_temperature();
-        float relHum() const;
-        float temperature() const;
+        CO2(const std::shared_ptr<ModbusClient>& modbusClient);
+        float update();
+        float f() const;
+        uint32_t u32() const;
 
     private:
-        ModbusRegister mRelHum_mr;
-        ModbusRegister mTemp_mr;
+        ModbusRegister mGMP252_low;
+        ModbusRegister mGMP252_high;
 
+        u32_f_u mCO2;
+    };
+
+    class Humidity {
+    public:
+        Humidity(const std::shared_ptr<ModbusClient>& modbusClient);
+        float update();
+        float f() const;
+        uint32_t u32() const;
+
+    private:
+        ModbusRegister mHMP60;
         float mRelHum;
-        float mTemp;
+        u16_u32_f_u mRH;
     };
 
-    // SDP6X0 missing
+    class Temperature {
+    public:
+        Temperature(const std::shared_ptr<ModbusClient>& modbusClient);
+        float update_GMP252();
+        float update_HMP60();
+        float update_all();
+
+        float value_GMP252() const;
+        float value_HMP60() const;
+        float value_average() const;
+    private:
+        ModbusRegister mGMP252_low;
+        ModbusRegister mGMP252_high;
+        ModbusRegister mHMP60;
+
+        u32_f_u mTempGMP252;
+        uint16_t mTempHMP60{0};
+    };
+
+    // SDP610 missing
 
 } // Sensor
 
