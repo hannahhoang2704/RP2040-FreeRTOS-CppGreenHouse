@@ -1,5 +1,6 @@
 #include <memory>
 #include <pico/stdio.h>
+#include "FreeRTOS.h"
 #include "uart/PicoOsUart.h"
 #include "Greenhouse.h"
 #include "Display.h"
@@ -55,7 +56,7 @@ int main() {
     auto rtu_client = make_shared<ModbusClient>(modbusUART);
 
     /// taskers
-    new Greenhouse(rtu_client);
+    new Greenhouse(rtu_client, OLED_SDP600_I2C);
     new Display(OLED_SDP600_I2C);
     new Logger(CLI_UART);
     new SwitchHandler();

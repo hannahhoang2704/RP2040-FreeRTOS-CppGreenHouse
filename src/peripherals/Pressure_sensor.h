@@ -18,8 +18,8 @@ public:
     int read_pressure();
     int get_pressure_value() const;
 private:
-    static const uint8_t correction_factor = 0.95;
-    static const uint8_t differential_pressure = 240;
+    const float correction_factor = 0.95;
+    const uint8_t differential_pressure = 240;
     static const int buffer_len = 2;
     const uint8_t trigger_measurement_cmd[1] = {0xF1};
     std::shared_ptr<PicoI2C> mI2C;
