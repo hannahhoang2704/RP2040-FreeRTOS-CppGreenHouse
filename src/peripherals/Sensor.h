@@ -23,18 +23,16 @@ namespace Sensor {
         float f = 0;
     };
 
-    union u16_u32_f_u {
+    union u16_f_u {
         uint16_t u16;
-        uint32_t u32;
         float f = 0;
     };
 
     class CO2 {
     public:
         CO2(const std::shared_ptr<ModbusClient>& modbusClient);
-        float update();
-        float f() const;
-        uint32_t u32() const;
+        u32_f_u update();
+        u32_f_u value() const;
 
     private:
         ModbusRegister mGMP252_low;
@@ -53,7 +51,6 @@ namespace Sensor {
     private:
         ModbusRegister mHMP60;
         float mRelHum;
-        u16_u32_f_u mRH;
     };
 
     class Temperature {

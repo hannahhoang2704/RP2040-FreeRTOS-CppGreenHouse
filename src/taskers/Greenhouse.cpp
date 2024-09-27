@@ -28,7 +28,7 @@ void Greenhouse::automate_greenhouse() {
     mMIO12_V.write(50);
     while (true) {
         mCO2.update();
-        Logger::log("Greenhouse: GMP252: CO2:    %5.1f ppm\n", mCO2.u32());
+        Logger::log("Greenhouse: GMP252: CO2:    %5u ppm\n", mCO2.update().u32);
         Logger::log("Greenhouse: GMP252: Temp:   %5.1f C\n", mTemperature.update_GMP252());
         Logger::log("Greenhouse: HMP60:  RelHum: %5.1f %%\n", mHumidity.update());
         Logger::log("Greenhouse: HMP60:  Temp:   %5.1f C\n", mTemperature.update_HMP60());

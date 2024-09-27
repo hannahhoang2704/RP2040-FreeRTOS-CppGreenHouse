@@ -1,4 +1,5 @@
 #include "Sensor.h"
+#include "Logger.h"
 
 
 using namespace std;
@@ -9,18 +10,14 @@ namespace Sensor {
             mGMP252_low(modbusClient, GMP252_s.servAddr, GMP252_s.regAddrCO2),
             mGMP252_high(modbusClient, GMP252_s.servAddr, GMP252_s.regAddrCO2 + 1) {}
 
-    float CO2::update() {
+    u32_f_u CO2::update() {
         mCO2.u32 = mGMP252_low.read();
         mCO2.u32 += mGMP252_high.read() << 16;
-        return mCO2.f;
+        return mCO2;
     }
 
-    float CO2::f() const {
-        return mCO2.f;
-    }
-
-    uint32_t CO2::u32() const {
-        return mCO2.u32;
+    u32_f_u CO2::value() const {
+        return mCO2;
     }
 
     ///
@@ -28,12 +25,10 @@ namespace Sensor {
     Humidity::Humidity(const std::shared_ptr<ModbusClient>& modbusClient) :
             mHMP60(modbusClient, HMP60_s.servAddr, HMP60_s.regAddrRelHum) {}
 
-    float Humidity::update() {
+    u Humidity::update() {
         mRelHum = mHMP60.read();
         mRelHum /= 10;
-        mRH.u16 = mHMP60.read();
-        mRH.f /= 10;
-        return mRH.f;
+        return mRelHum;
     }
 
     float Humidity::f() const {

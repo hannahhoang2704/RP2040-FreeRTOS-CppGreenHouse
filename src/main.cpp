@@ -20,7 +20,7 @@ int main() {
     /// interfaces
     auto CLI_UART = make_shared<PicoOsUart>(0,0,1,115200,1);
     auto modbusUART = make_shared<PicoOsUart>(1,4,5,9600,2);
-    auto OLED_SDP600_I2C = make_shared<PicoI2C>(1,4000000);
+    auto OLED_SDP600_I2C = make_shared<PicoI2C>(1,400000);
     auto rtu_client = make_shared<ModbusClient>(modbusUART);
 
     /// taskers
