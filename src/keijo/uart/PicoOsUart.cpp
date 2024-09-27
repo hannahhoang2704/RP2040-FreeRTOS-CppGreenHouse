@@ -3,7 +3,7 @@
 //
 
 #include "PicoOsUart.h"
-
+#include <mutex>
 #include <hardware/gpio.h>
 #include <cstring>
 
@@ -13,7 +13,7 @@ static PicoOsUart *pu0;
 static PicoOsUart *pu1;
 
 
-void pico_uart0_handler(void) {
+void pico_uart0_handler() {
     if(pu0) {
         pu0->uart_irq_rx();
         pu0->uart_irq_tx();
@@ -21,7 +21,7 @@ void pico_uart0_handler(void) {
     else irq_set_enabled(UART0_IRQ, false);
 }
 
-void pico_uart1_handler(void) {
+void pico_uart1_handler() {
     if(pu1) {
         pu1->uart_irq_rx();
         pu1->uart_irq_tx();
@@ -63,6 +63,7 @@ PicoOsUart::PicoOsUart(int uart_nr, int tx_pin, int rx_pin, int speed, int stop,
 }
 
 int PicoOsUart::read(uint8_t *buffer, int size, TickType_t timeout) {
+    std::lock_guard<Fmutex> exclusive(access);
     int count = 0;
     while(count < size && xQueueReceive(rx, buffer, timeout) == pdTRUE) {
         ++buffer;
@@ -72,6 +73,7 @@ int PicoOsUart::read(uint8_t *buffer, int size, TickType_t timeout) {
 }
 
 int PicoOsUart::write(const uint8_t *buffer, int size, TickType_t timeout) {
+    std::lock_guard<Fmutex> exclusive(access);
     int count = 0;
     // write data to queue
     while(count < size && xQueueSendToBack(tx, buffer, timeout) == pdTRUE) {
@@ -84,11 +86,14 @@ int PicoOsUart::write(const uint8_t *buffer, int size, TickType_t timeout) {
     // if transmit interrupt is not enabled we need to enable it and give fifo an initial filling
     if(!(uart_get_hw(uart)->imsc & (1 << UART_UARTIMSC_TXIM_LSB))) {
         uint8_t ch;
-        // enable transmit interrupt
-        uart_set_irq_enables(uart, true, true);
         // fifo requires initial fill to get TX interrupts going
         while(uart_is_writable(uart) && xQueueReceive(tx, &ch, 0) == pdTRUE) {
             uart_get_hw(uart)->dr = ch;
+        }
+        // enable interrupt only if there is data left in the queue
+        if(uxQueueMessagesWaiting(tx)>0) {
+            // enable transmit interrupt
+            uart_set_irq_enables(uart, true, true);
         }
     }
     // enable interrupts on NVIC
@@ -98,16 +103,17 @@ int PicoOsUart::write(const uint8_t *buffer, int size, TickType_t timeout) {
 }
 
 int PicoOsUart::send(const char *str) {
-    write(reinterpret_cast<const uint8_t *>(str), strlen(str));
+    write(reinterpret_cast<const uint8_t *>(str), static_cast<int>(strlen(str)));
     return 0;
 }
 
 int PicoOsUart::send(const std::string &str) {
-    write(reinterpret_cast<const uint8_t *>(str.c_str()), str.length());
+    write(reinterpret_cast<const uint8_t *>(str.c_str()), static_cast<int>(str.length()));
     return 0;
 }
 
 int PicoOsUart::flush() {
+    std::lock_guard<Fmutex> exclusive(access);
     int count = 0;
     char dummy = 0;
     while(xQueueReceive(rx, &dummy, 0)==pdTRUE) {
@@ -152,7 +158,7 @@ int PicoOsUart::get_fifo_level() {
     return flv[fcr];
 }
 
-int PicoOsUart::get_baud() {
+int PicoOsUart::get_baud() const {
     return speed;
 }
 
