@@ -10,6 +10,7 @@
 #include <string>
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "Fmutex.h"
 
 class PicoOsUart {
     friend void pico_uart0_handler(void);
@@ -23,10 +24,11 @@ public:
     int send(const std::string &str);
     int flush();
     int get_fifo_level();
-    int get_baud();
+    int get_baud() const;
 private:
     void uart_irq_rx();
     void uart_irq_tx();
+    Fmutex access;
     QueueHandle_t tx;
     QueueHandle_t rx;
     uart_inst_t *uart;
