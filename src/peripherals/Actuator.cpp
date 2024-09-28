@@ -8,14 +8,15 @@ namespace Actuator {
             mFanCounter(modbusClient, server, regFanCounter)
     {}
 
-    void Fan::set_power(int16_t permille) {
-        if (permille > MAX_POWER) permille = MAX_POWER;
-        else if (permille < MIN_POWER) permille = MIN_POWER;
-        mFanPower.write(permille);
-        if (permille != OFF)
+    void Fan::set_power(int16_t newPower) {
+        if (newPower > MAX_POWER) newPower = MAX_POWER;
+        else if (newPower < MIN_POWER) newPower = MIN_POWER;
+        // the test-fan needs a bit of a kick if its completely still
+        if (mSetPower == OFF && newPower != OFF)
             for (uint8_t attempt = 0; !running() && attempt < 3; ++attempt)
-                mFanPower.write(permille);
-        mSetPower = permille;
+                mFanPower.write(MAX_POWER);
+        mFanPower.write(newPower);
+        mSetPower = newPower;
     }
 
     bool Fan::running() {
