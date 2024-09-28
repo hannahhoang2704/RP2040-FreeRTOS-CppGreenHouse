@@ -21,6 +21,11 @@ Display::Display(const shared_ptr<PicoI2C>& i2c_sp) :
     }
 }
 
+void Display::task_display(void * params) {
+    auto object_ptr = static_cast<Display *>(params);
+    object_ptr->display();
+}
+
 void Display::display() {
     Logger::log("Initiated DISPLAY task.\n");
     mSSD1306.init();

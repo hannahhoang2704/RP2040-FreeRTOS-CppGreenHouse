@@ -19,10 +19,7 @@ public:
 private:
     void automate_greenhouse();
 
-    static void task_automate_greenhouse(void *params) {
-        auto object_ptr = static_cast<Greenhouse *>(params);
-        object_ptr->automate_greenhouse();
-    }
+    static void task_automate_greenhouse(void *params);
 
     TaskHandle_t mTaskHandle;
     Sensor::CO2 mCO2;

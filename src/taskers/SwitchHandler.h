@@ -34,10 +34,7 @@ public:
 
 private:
     void event_handler();
-    static void task_event_handler(void *params) {
-        auto object_ptr = static_cast<SwitchHandler *>(params);
-        object_ptr->event_handler();
-    }
+    static void task_event_handler(void *params);
 
     TaskHandle_t mTaskHandle{nullptr};
     static QueueHandle_t mIRQ_eventQueue;

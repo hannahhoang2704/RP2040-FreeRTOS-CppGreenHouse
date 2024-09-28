@@ -24,6 +24,11 @@ Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client) :
     }
 }
 
+void Greenhouse::task_automate_greenhouse(void *params) {
+    auto object_ptr = static_cast<Greenhouse *>(params);
+    object_ptr->automate_greenhouse();
+}
+
 void Greenhouse::automate_greenhouse() {
     Logger::log("Initiated GREENHOUSE task\n");
     mMIO12_V.write(100);

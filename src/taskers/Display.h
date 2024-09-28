@@ -12,10 +12,7 @@ public:
     Display(const std::shared_ptr<PicoI2C>& i2c_sp);
 private:
     void display();
-    static void task_display(void * params) {
-        auto object_ptr = static_cast<Display *>(params);
-        object_ptr->display();
-    }
+    static void task_display(void * params);
 
     TaskHandle_t mTaskHandle;
     ssd1306os mSSD1306;

@@ -25,16 +25,21 @@ void SwitchHandler::irq_handler(uint gpio, uint32_t event_mask) {
 
 SwitchHandler::SwitchHandler() {
     if (xTaskCreate(task_event_handler,
-                "SW_HANDLER",
-                512,
-                (void *) this,
-                tskIDLE_PRIORITY + 2,
-                &mTaskHandle) == pdPASS) {
+                    "SW_HANDLER",
+                    512,
+                    (void *) this,
+                    tskIDLE_PRIORITY + 2,
+                    &mTaskHandle) == pdPASS) {
         Logger::log("Created SW_HANDLER task\n");
     } else {
         Logger::log("Failed to create SW_HANDLER task\n");
     }
 
+}
+
+void SwitchHandler::task_event_handler(void *params) {
+    auto object_ptr = static_cast<SwitchHandler *>(params);
+    object_ptr->event_handler();
 }
 
 void SwitchHandler::event_handler() {
