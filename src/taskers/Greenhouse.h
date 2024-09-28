@@ -13,10 +13,9 @@
 
 class Greenhouse {
 public:
-    Greenhouse(std::shared_ptr<PicoOsUart> uart_sp, const std::shared_ptr<ModbusClient>& modbus_client, uint lep_pin);
+    Greenhouse(const std::shared_ptr<ModbusClient>& modbus_client, uint lep_pin);
 
-    const int HMP60_ADDRESS{241};
-    const int GMP252_ADDRESS{240};
+    const std::string mTaskName;
 private:
     void automate_greenhouse();
     static void task_automate_greenhouse(void * params) {
@@ -25,12 +24,10 @@ private:
     }
 
     TaskHandle_t mTaskHandle;
-    std::shared_ptr<PicoOsUart> mCLI_UART; // only for prints -- switch to logger at some point
     Sensor::GMP252 mGMP252;
     Sensor::HMP60 mHMP60;
+    // missing pressure sensor
     ModbusRegister mMIO12_V;
-
-    std::shared_ptr<LED> mLED;
 };
 
 

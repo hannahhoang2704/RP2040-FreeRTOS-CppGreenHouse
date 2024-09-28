@@ -13,7 +13,7 @@
 
 class SwitchHandler {
 public:
-    SwitchHandler(std::shared_ptr<PicoOsUart> uart);
+    SwitchHandler();
 
     static void irq_handler(uint gpio, uint32_t event_mask);
 
@@ -30,7 +30,7 @@ public:
     static const uint ROT_SW = 12;
     static const uint ROT_A = 10;
 
-    static uint lostEvents;
+    static uint32_t mLostEvents;
 
 private:
     void event_handler();
@@ -62,10 +62,7 @@ private:
     } mEvent;
 
     const uint64_t mPressDebounce_us{100000};
-
     std::map<swEvent, uint64_t> mPrevEventTime;
-
-    std::shared_ptr<PicoOsUart> mUart;
 };
 
 

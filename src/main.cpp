@@ -1,11 +1,9 @@
 #include <memory>
 #include <pico/stdio.h>
-#include "FreeRTOS.h"
 #include "uart/PicoOsUart.h"
 #include "Greenhouse.h"
 #include "Display.h"
 #include "SwitchHandler.h"
-#include "Switch.h"
 #include "Logger.h"
 
 extern "C" {
@@ -32,45 +30,32 @@ uint32_t read_runtime_ctr(void) {
 using namespace std;
 
 int main() {
+    Logger::log("Boot!\n");
 
+    /// interfaces
     auto CLI_UART = make_shared<PicoOsUart>(
             CLI_UART_NR,
             CLI_UART_TX_PIN,
             CLI_UART_RX_PIN,
             CLI_BAUD_RATE,
             CLI_STOP_BITS);
-
-    Logger::log("Boot!\n", 0, 0);
-#if 0 // program gets stuck at writes or reads if uart is not connected
     auto modbusUART = make_shared<PicoOsUart>(
             MODBUS_UART_NR,
             MODBUS_UART_TX_PIN,
             MODBUS_UART_RX_PIN,
             MODBUS_BAUD_RATE,
             MODBUS_STOP_BITS);
-
-    auto rtu_client = make_shared<ModbusClient>(modbusUART);
-    new Greenhouse(CLI_UART, rtu_client, LED2);
-#endif
-
     auto OLED_SDP600_I2C = make_shared<PicoI2C>(
             OLED_SDP_I2C_BUS,
             OLED_SDP_I2C_BAUD);
+    auto rtu_client = make_shared<ModbusClient>(modbusUART);
 
+    /// taskers
+    new Greenhouse(CLI_UART, rtu_client, LED2);
     new Display(OLED_SDP600_I2C);
     new Logger(CLI_UART);
+    new SwitchHandler();
 
-    Logger::log("Data 1: %u\n", 10);
-
-    new SW::Button(SwitchHandler::SW_2);
-    new SW::Button(SwitchHandler::SW_1);
-    new SW::Button(SwitchHandler::SW_0);
-    new SW::Button(SwitchHandler::ROT_SW);
-    new SW::Rotor();
-
-    new SwitchHandler(CLI_UART);
-
-    CLI_UART->send("Initializing scheduler...\n");
-
+    Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();
 }

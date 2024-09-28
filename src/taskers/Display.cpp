@@ -6,8 +6,8 @@
 
 using namespace std;
 
-Display::Display(shared_ptr<PicoI2C> i2c_sp) :
-        mSSD1306(std::move(i2c_sp))
+Display::Display(const shared_ptr<PicoI2C>& i2c_sp) :
+        mSSD1306(i2c_sp)
 {
     if (xTaskCreate(task_display,
                     "DISPLAY",
@@ -15,21 +15,19 @@ Display::Display(shared_ptr<PicoI2C> i2c_sp) :
                     (void *) this,
                     tskIDLE_PRIORITY + 2,
                     &mTaskHandle) == pdPASS) {
-        // log
         Logger::log("Created DISPLAY task.\n");
     } else {
-        // log
         Logger::log("Failed to create DISPLAY task.\n");
     }
 }
 
 void Display::display() {
-    // log
+    Logger::log("Initiated DISPLAY task.\n");
     mSSD1306.init();
     bool color = true;
     while (true) {
-        mSSD1306.fill(color ? 1 : 0);
-        mSSD1306.text("Boot!", 46, 28, color ? 0 : 1);
+        mSSD1306.fill(color);
+        mSSD1306.text("Boot!", 46, 28, !color);
         mSSD1306.show();
         color = !color;
         vTaskDelay(pdMS_TO_TICKS(1000));
