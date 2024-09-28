@@ -6,8 +6,8 @@
 
 using namespace std;
 
-Display::Display(shared_ptr<PicoI2C> i2c_sp) :
-        mSSD1306(std::move(i2c_sp))
+Display::Display(const shared_ptr<PicoI2C>& i2c_sp) :
+        mSSD1306(i2c_sp)
 {
     if (xTaskCreate(task_display,
                     "DISPLAY",

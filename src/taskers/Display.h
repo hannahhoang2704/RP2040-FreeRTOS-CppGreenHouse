@@ -9,7 +9,7 @@
 
 class Display {
 public:
-    Display(std::shared_ptr<PicoI2C> i2c_sp);
+    Display(const std::shared_ptr<PicoI2C>& i2c_sp);
 private:
     void display();
     static void task_display(void * params) {
