@@ -44,3 +44,20 @@ void LED::toggle() {
 string LED::get_name() const {
     return mName;
 }
+
+void LED::set(uint level) {
+    if (level <= WRAP) mLevel = level;
+    else mLevel = WRAP;
+    pwm_set_chan_level(mSlice,
+                       mChannel,
+                       mOn ? mLevel : 0);
+}
+
+void LED::adjust(int increment) {
+    if (mLevel + increment < WRAP) {
+        mLevel += increment;
+    } else {
+        increment < 0 ? mLevel = 0 : mLevel = WRAP;
+    }
+    set(mLevel);
+}

@@ -1,66 +1,64 @@
 #include <memory>
 #include <pico/stdio.h>
-#include "FreeRTOS.h"
 #include "uart/PicoOsUart.h"
 #include "Greenhouse.h"
 #include "Display.h"
+#include "SwitchHandler.h"
 #include "Logger.h"
 
-
-#include "hardware/timer.h"
 extern "C" {
 uint32_t read_runtime_ctr(void) {
     return timer_hw->timerawl;
 }
 }
 
-#define MODBUS_STOP_BITS 2 // for real system (pico simualtor also requires 2 stop bits)
-#define MODBUS_BAUD_RATE 9600
-#define MODBUS_UART_NR 1
-#define MODBUS_UART_TX_PIN 4
-#define MODBUS_UART_RX_PIN 5
+const struct {
+    uint ctrl_nr = 0; // controller number
+    uint tx_pin = 0;
+    uint rx_pin = 1;
+    uint baud = 115200;
+    uint8_t stop_bits = 1;
+} UART0_s;
 
-#define CLI_STOP_BITS 1
-#define CLI_BAUD_RATE 115200
-#define CLI_UART_NR 0
-#define CLI_UART_TX_PIN 0
-#define CLI_UART_RX_PIN 1
+const struct {
+    uint ctrl_nr = 1; // controller number
+    uint tx_pin = 4;
+    uint rx_pin = 5;
+    uint baud = 9600;
+    uint8_t stop_bits = 2;
+} UART1_s;
 
-#define OLED_SDP_I2C_BUS 1
-#define OLED_SDP_I2C_BAUD 400000
+const struct {
+    uint ctrl_nr = 1;
+    uint sda_pin = 14;
+    uint scl_pin = 15;
+    uint baud = 400000;
+} I2C1_s;
+
+const struct {
+    uint ctrl_nr = 0;
+    uint sda_pin = 16;
+    uint scl_pin = 17;
+    uint baud = 12345; // ? EEPROM
+} I2C0_s;
 
 using namespace std;
 
 int main() {
+    Logger::log("Boot!\n");
 
-    auto CLI_UART = make_shared<PicoOsUart>(
-            CLI_UART_NR,
-            CLI_UART_TX_PIN,
-            CLI_UART_RX_PIN,
-            CLI_BAUD_RATE,
-            CLI_STOP_BITS);
-
-    Logger::log("Boot!\n", 0, 0);
-#if 0 // program gets stuck at writes or reads if uart is not connected
-    auto modbusUART = make_shared<PicoOsUart>(
-            MODBUS_UART_NR,
-            MODBUS_UART_TX_PIN,
-            MODBUS_UART_RX_PIN,
-            MODBUS_BAUD_RATE,
-            MODBUS_STOP_BITS);
-
+    /// interfaces
+    auto CLI_UART = make_shared<PicoOsUart>(UART0_s.ctrl_nr, UART0_s.tx_pin, UART0_s.rx_pin, UART0_s.baud,UART0_s.stop_bits);
+    auto modbusUART = make_shared<PicoOsUart>(UART1_s.ctrl_nr,UART1_s.tx_pin, UART1_s.rx_pin,UART1_s.baud,UART1_s.stop_bits);
+    auto OLED_SDP600_I2C = make_shared<PicoI2C>(I2C1_s.ctrl_nr, I2C1_s.baud);
     auto rtu_client = make_shared<ModbusClient>(modbusUART);
-    new Greenhouse(CLI_UART, rtu_client, LED2);
-#endif
-    auto OLED_SDP600_I2C = make_shared<PicoI2C>(
-            OLED_SDP_I2C_BUS,
-            OLED_SDP_I2C_BAUD);
 
+    /// taskers
+    new Greenhouse(rtu_client);
     new Display(OLED_SDP600_I2C);
     new Logger(CLI_UART);
+    new SwitchHandler();
 
-    Logger::log("Data 1: %u\n", 10);
-
-
+    Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();
 }

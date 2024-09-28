@@ -26,11 +26,16 @@ void Logger::log(const char *format, uint32_t d1, uint32_t d2) {
     xQueueSendToBack(mSyslog_queue, &event, 0);
 }
 
-void Logger::run(){
+void Logger::log(const std::string& string) {
+    debugEvent dbgE {string.c_str(), time_us_64() / 1000000, {0, 0}};
+    xQueueSendToBack(mSyslog_queue, &dbgE, 0);
+}
+
+void Logger::run() {
     while(true){
         if(xQueueReceive(mSyslog_queue, &mDebugEvent, portMAX_DELAY) == pdTRUE){
-            offset = snprintf(buffer, sizeof(buffer), "[%u ms] ", mDebugEvent.data[0]);
-            snprintf(buffer + offset, sizeof(buffer) - offset, mDebugEvent.format, mDebugEvent.data[1], mDebugEvent.data[2]);
+            offset = snprintf(buffer, sizeof(buffer), "[%llu ms] ", mDebugEvent.timestamp);
+            snprintf(buffer + offset, sizeof(buffer) - offset, mDebugEvent.format, mDebugEvent.data[0], mDebugEvent.data[1]);
             mCLI_UART->send(buffer);
         }
     }

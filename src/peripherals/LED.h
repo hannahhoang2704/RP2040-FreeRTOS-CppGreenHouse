@@ -16,8 +16,10 @@ public:
     LED(uint pin, bool PWM_on = true);
     void put(bool state);
     void toggle();
-    std::string get_name() const;
+    void set(uint level);
+    void adjust(int increment);
 
+    std::string get_name() const;
 private:
     static const uint16_t DIVIDER{125};
     static const uint16_t WRAP{99};
