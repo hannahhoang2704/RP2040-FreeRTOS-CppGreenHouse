@@ -8,9 +8,7 @@ PressureSensor::PressureSensor(std::shared_ptr<PicoI2C> i2c_sp, uint8_t deviceAd
     mI2C(i2c_sp), mDevAddr(deviceAddress) {}
 
 int PressureSensor::read_pressure() {
-    mI2C->write(mDevAddr, trigger_measurement_cmd, 1);
-    vTaskDelay(10);
-    mI2C->read(mDevAddr, mBuffer, buffer_len);
+    mI2C->transaction(mDevAddr, trigger_measurement_cmd, 1, mBuffer, buffer_len);
     vTaskDelay(100);
     mPressure_value = ((mBuffer[0] << 8) | mBuffer[1]) / differential_pressure * correction_factor;
     Logger::log("Pressure value: %d\n", mPressure_value);
