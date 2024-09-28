@@ -21,7 +21,7 @@ private:
         object_ptr->console_input();
     }
 
-    std::shared_ptr<PicoOsUart> mUART;
+    std::shared_ptr<PicoOsUart> mCLI_UART;
     uint8_t mBuffer[CONSOLE_BUFFER_SIZE];
     std::string mLine;
     Blinker mBlinker;
