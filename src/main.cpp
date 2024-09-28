@@ -6,8 +6,6 @@
 #include "Display.h"
 #include "Logger.h"
 
-
-#include "hardware/timer.h"
 extern "C" {
 uint32_t read_runtime_ctr(void) {
     return timer_hw->timerawl;
@@ -52,6 +50,7 @@ int main() {
     auto rtu_client = make_shared<ModbusClient>(modbusUART);
     new Greenhouse(CLI_UART, rtu_client, LED2);
 #endif
+
     auto OLED_SDP600_I2C = make_shared<PicoI2C>(
             OLED_SDP_I2C_BUS,
             OLED_SDP_I2C_BAUD);
