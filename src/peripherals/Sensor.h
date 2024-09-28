@@ -23,16 +23,11 @@ namespace Sensor {
         float f = 0;
     };
 
-    union u16_f_u {
-        uint16_t u16;
-        float f = 0;
-    };
-
     class CO2 {
     public:
         CO2(const std::shared_ptr<ModbusClient>& modbusClient);
-        u32_f_u update();
-        u32_f_u value() const;
+        float update();
+        float value() const;
 
     private:
         ModbusRegister mGMP252_low;
@@ -45,8 +40,7 @@ namespace Sensor {
     public:
         Humidity(const std::shared_ptr<ModbusClient>& modbusClient);
         float update();
-        float f() const;
-        uint32_t u32() const;
+        float value() const;
 
     private:
         ModbusRegister mHMP60;
@@ -70,9 +64,10 @@ namespace Sensor {
 
         u32_f_u mTempGMP252;
         uint16_t mTempHMP60{0};
+        float mTempAvg{0};
     };
 
-    // SDP610 missing
+    // Pressure missing
 
 } // Sensor
 

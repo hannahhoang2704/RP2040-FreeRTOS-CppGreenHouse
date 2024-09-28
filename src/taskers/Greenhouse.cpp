@@ -1,5 +1,7 @@
 #include "Greenhouse.h"
 #include "Logger.h"
+#include <sstream>
+#include <iomanip>
 
 using namespace std;
 
@@ -24,14 +26,26 @@ Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client) :
 
 void Greenhouse::automate_greenhouse() {
     Logger::log("Initiated GREENHOUSE task\n");
-    mMIO12_V.write(50);
-    mMIO12_V.write(50);
+    mMIO12_V.write(100);
+    mMIO12_V.write(100);
+    stringstream ss;
     while (true) {
-        mCO2.update();
-        Logger::log("Greenhouse: GMP252: CO2:    %5u ppm\n", mCO2.update().u32);
-        Logger::log("Greenhouse: GMP252: Temp:   %5.1f C\n", mTemperature.update_GMP252());
-        Logger::log("Greenhouse: HMP60:  RelHum: %5.1f %%\n", mHumidity.update());
-        Logger::log("Greenhouse: HMP60:  Temp:   %5.1f C\n", mTemperature.update_HMP60());
+        ss << setw(5) << setprecision(1) << fixed << mCO2.update();
+        Logger::log("Greenhouse: GMP252:    CO2: " + ss.str() + " ppm\n");
+        ss.str("");
+        vTaskDelay(1);
+        ss << setw(5) << setprecision(1) << fixed << mTemperature.update_GMP252();
+        Logger::log("Greenhouse: GMP252:   Temp: " + ss.str() + " C\n");
+        ss.str("");
+        vTaskDelay(1);
+        ss << setw(5) << setprecision(1) << fixed << mHumidity.update();
+        Logger::log("Greenhouse:  HMP60: RelHum: " + ss.str() + " %%\n");
+        ss.str("");
+        vTaskDelay(1);
+        ss << setw(5) << setprecision(1) << fixed << mTemperature.update_HMP60();
+        Logger::log("Greenhouse:  HMP60:   Temp: " + ss.str() + " C\n");
+        ss.str("");
+        vTaskDelay(1);
 
         vTaskDelay(pdMS_TO_TICKS(1000));
     }

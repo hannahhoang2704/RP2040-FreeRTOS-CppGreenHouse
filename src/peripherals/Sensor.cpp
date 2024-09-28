@@ -10,14 +10,14 @@ namespace Sensor {
             mGMP252_low(modbusClient, GMP252_s.servAddr, GMP252_s.regAddrCO2),
             mGMP252_high(modbusClient, GMP252_s.servAddr, GMP252_s.regAddrCO2 + 1) {}
 
-    u32_f_u CO2::update() {
+    float CO2::update() {
         mCO2.u32 = mGMP252_low.read();
         mCO2.u32 += mGMP252_high.read() << 16;
-        return mCO2;
+        return mCO2.f;
     }
 
-    u32_f_u CO2::value() const {
-        return mCO2;
+    float CO2::value() const {
+        return mCO2.f;
     }
 
     ///
@@ -25,19 +25,17 @@ namespace Sensor {
     Humidity::Humidity(const std::shared_ptr<ModbusClient>& modbusClient) :
             mHMP60(modbusClient, HMP60_s.servAddr, HMP60_s.regAddrRelHum) {}
 
-    u Humidity::update() {
+    float Humidity::update() {
         mRelHum = mHMP60.read();
         mRelHum /= 10;
         return mRelHum;
     }
 
-    float Humidity::f() const {
+    float Humidity::value() const {
         return mRelHum;
     }
 
-    uint32_t Humidity::u32() const {
-        return mRH.u32;
-    }
+    ///
 
     Temperature::Temperature(const shared_ptr <ModbusClient> &modbusClient) :
             mGMP252_low(modbusClient, GMP252_s.servAddr, GMP252_s.regAddrTemp),
@@ -69,6 +67,6 @@ namespace Sensor {
     }
 
     float Temperature::value_average() const {
-        return (mTempGMP252.f + mTempHMP60) / 2;
+        return (mTempGMP252.f + static_cast<float>(mTempHMP60)) / 2;
     }
 }

@@ -26,6 +26,11 @@ void Logger::log(const char *format, uint32_t d1, uint32_t d2) {
     xQueueSendToBack(mSyslog_queue, &event, 0);
 }
 
+void Logger::log(const std::string& string) {
+    debugEvent dbgE {string.c_str(), time_us_64() / 1000000, {0, 0}};
+    xQueueSendToBack(mSyslog_queue, &dbgE, 0);
+}
+
 void Logger::run() {
     while(true){
         if(xQueueReceive(mSyslog_queue, &mDebugEvent, portMAX_DELAY) == pdTRUE){
