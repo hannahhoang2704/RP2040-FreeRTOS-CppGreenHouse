@@ -17,7 +17,6 @@ EEPROM::SingleStorage::SingleStorage(std::shared_ptr<PicoI2C> i2c_sp, uint8_t by
     }
 }
 
-// not finished
 int EEPROM::SingleStorage::get() {
     apply_reg_addr();
     mI2C->read(mDevAddr, mBuffer, mBytes + REG_ADDR_LEN);
@@ -28,7 +27,6 @@ int EEPROM::SingleStorage::get() {
     return retVal;
 }
 
-// not finished
 void EEPROM::SingleStorage::put(int data) {
     apply_reg_addr();
     for (int byte = 0; byte < mBytes; ++byte) {
