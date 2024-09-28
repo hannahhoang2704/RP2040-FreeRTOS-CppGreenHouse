@@ -1,6 +1,7 @@
 //
 // Created by Keijo Länsikunnas on 10.9.2024.
 //
+
 #include <mutex>
 #include "pico/stdlib.h"
 #include "PicoI2C.h"
@@ -173,4 +174,3 @@ void PicoI2C::isr() {
     }
     portYIELD_FROM_ISR(hpw);
 }
-
