@@ -63,7 +63,6 @@ void SwitchHandler::state_handler() {
         while (xQueueReceive(mIRQ_eventQueue,
                              static_cast<void *>(&mEventData),
                              portMAX_DELAY) == pdTRUE) {
-            // ignore switch events during connecting state
             if (mEventData.gpio == mRotor.mPinA || mEventData.gpio == mRotor.mPinB) {
                 rot_event();
             } else {
@@ -86,6 +85,7 @@ void SwitchHandler::rot_event() {
         } else if (mEventData.eventMask == GPIO_IRQ_EDGE_RISE) {
             mEvent = mEventData.gpio == mRotor.mPinA ? ROT_COUNTER_CLOCKWISE : ROT_CLOCKWISE;
         }
+        // execute input according to state
         if (mState == STATUS) {
             if (mEvent == ROT_CLOCKWISE) {
                 mPendingCO2Target += CO2_INCREMENT;
@@ -233,6 +233,7 @@ void SwitchHandler::button_event() {
  * '~' (tilde) is the highest reachable character, ignoring rotations above it.
  * Incrementing and decrementing alphabet characters runs through upper- and lowercase characters in pairs,
  * like so: AaBbCcDdEe... and so forth.
+ * General order: ['0'..'9'], '.', [Aa..Zz], [rest of the fucking owl]
  */
 
 /// increment pending character with a modified lexicography
