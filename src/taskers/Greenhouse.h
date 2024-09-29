@@ -10,6 +10,7 @@
 #include "LED.h"
 #include "modbus/ModbusRegister.h"
 #include "Sensor.h"
+#include "Actuator.h"
 
 class Greenhouse {
 public:
@@ -25,7 +26,9 @@ private:
     Sensor::Humidity mHumidity;
     Sensor::Temperature mTemperature;
     Sensor::PressureSensor mPressure;
-    ModbusRegister mMIO12_V;
+
+    Actuator::Fan mFan;
+    Actuator::CO2_Emitter mCO2_Emitter;
 };
 
 #endif //RP2040_FREERTOS_IRQ_GREENHOUSE_H

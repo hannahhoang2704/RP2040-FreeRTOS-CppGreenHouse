@@ -10,7 +10,8 @@ Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client, const shar
         mHumidity(modbus_client),
         mTemperature(modbus_client),
         mPressure(pressure_sensor_I2C),
-        mMIO12_V(modbus_client, 1, 0) {
+        mFan(modbus_client),
+        mCO2_Emitter() {
     if (xTaskCreate(task_automate_greenhouse,
                     "GREENHOUSE",
                     512,
@@ -30,11 +31,6 @@ void Greenhouse::task_automate_greenhouse(void *params) {
 
 void Greenhouse::automate_greenhouse() {
     Logger::log("Initiated GREENHOUSE task\n");
-    mMIO12_V.write(300);
-    mMIO12_V.write(300);
-    Logger::log("Initiated GREENHOUSE task\n");
-    mMIO12_V.write(100);
-    mMIO12_V.write(100);
     stringstream ss;
     while (true) {
         Logger::log("Pressure Sensor is %d\n", 40);
