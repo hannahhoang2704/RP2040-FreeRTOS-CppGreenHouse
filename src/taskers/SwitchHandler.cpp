@@ -1,10 +1,10 @@
-#include "StateHandler.h"
+#include "SwitchHandler.h"
 #include "Logger.h"
 
-QueueHandle_t StateHandler::mIRQ_eventQueue = xQueueCreate(10, sizeof(button_irq_event_data));;
-uint32_t StateHandler::mLostEvents = 0;
+QueueHandle_t SwitchHandler::mIRQ_eventQueue = xQueueCreate(10, sizeof(button_irq_event_data));;
+uint32_t SwitchHandler::mLostEvents = 0;
 
-void StateHandler::irq_handler(uint gpio, uint32_t event_mask) {
+void SwitchHandler::irq_handler(uint gpio, uint32_t event_mask) {
     BaseType_t xHigherPriorityWoken = pdFALSE;
     button_irq_event_data eventData{
             .gpio = gpio == ROT_A ? gpio_get(ROT_B) ? ROT_A : ROT_B : gpio,
@@ -19,7 +19,7 @@ void StateHandler::irq_handler(uint gpio, uint32_t event_mask) {
     portYIELD_FROM_ISR(xHigherPriorityWoken);
 }
 
-StateHandler::StateHandler() :
+SwitchHandler::SwitchHandler() :
         mToggleState(SW_2, irq_handler),
         mInsert(SW_1, irq_handler),
         mNext(SW_0, irq_handler),
@@ -38,12 +38,12 @@ StateHandler::StateHandler() :
 
 }
 
-void StateHandler::task_state_handler(void *params) {
-    auto object_ptr = static_cast<StateHandler *>(params);
+void SwitchHandler::task_state_handler(void *params) {
+    auto object_ptr = static_cast<SwitchHandler *>(params);
     object_ptr->state_handler();
 }
 
-void StateHandler::state_handler() {
+void SwitchHandler::state_handler() {
     Logger::log("SWH: Initiated\n");
     // TODO: order connector task to (try and) establish connection to ThingSpeak
     Logger::log("SWH: Waiting for ThingSpeak connection...\n");
@@ -77,7 +77,7 @@ void StateHandler::state_handler() {
     }
 }
 
-void StateHandler::rot_event() {
+void SwitchHandler::rot_event() {
     if (mEventData.timeStamp - mPrevBackspace > mPressDebounce_us) {
         // deduce rotation direction
         mEvent = UNKNOWN;
@@ -106,7 +106,7 @@ void StateHandler::rot_event() {
     }
 }
 
-void StateHandler::button_event() {
+void SwitchHandler::button_event() {
     // debounce button
     if (mEventData.timeStamp - mPrevEventTime[mEventData.gpio] > mPressDebounce_us) {
         mPrevEventTime[mEventData.gpio] = mEventData.timeStamp;
@@ -236,7 +236,7 @@ void StateHandler::button_event() {
  */
 
 /// increment pending character with a modified lexicography
-bool StateHandler::inc_pending_char() {
+bool SwitchHandler::inc_pending_char() {
     if (isupper(mPendingChar)) {
         mPendingChar = tolower(mPendingChar);
     } else if (islower(mPendingChar) && mPendingChar != 'z') {
@@ -274,7 +274,7 @@ bool StateHandler::inc_pending_char() {
 }
 
 /// decrement pending character with a modified lexicography
-bool StateHandler::dec_pending_char() {
+bool SwitchHandler::dec_pending_char() {
     if (islower(mPendingChar)) {
         mPendingChar = toupper(mPendingChar);
     } else if (isupper(mPendingChar) && mPendingChar != 'A') {
@@ -311,7 +311,7 @@ bool StateHandler::dec_pending_char() {
     return true;
 }
 
-void StateHandler::set_sw_irq(bool state) const {
+void SwitchHandler::set_sw_irq(bool state) const {
     mToggleState.set_irq(state);
     mInsert.set_irq(state);
     mNext.set_irq(state);

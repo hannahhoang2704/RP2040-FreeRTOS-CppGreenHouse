@@ -1,5 +1,5 @@
-#ifndef FREERTOS_GREENHOUSE_STATEHANDLER_H
-#define FREERTOS_GREENHOUSE_STATEHANDLER_H
+#ifndef FREERTOS_GREENHOUSE_SWITCHHANDLER_H
+#define FREERTOS_GREENHOUSE_SWITCHHANDLER_H
 
 
 #include <cstdio>
@@ -12,9 +12,9 @@
 
 #include "Switch.h"
 
-class StateHandler {
+class SwitchHandler {
 public:
-    StateHandler();
+    SwitchHandler();
 
     static void irq_handler(uint gpio, uint32_t event_mask);
 
@@ -100,4 +100,4 @@ private:
 };
 
 
-#endif //FREERTOS_GREENHOUSE_STATEHANDLER_H
+#endif //FREERTOS_GREENHOUSE_SWITCHHANDLER_H

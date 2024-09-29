@@ -3,7 +3,7 @@
 #include "uart/PicoOsUart.h"
 #include "Greenhouse.h"
 #include "Display.h"
-#include "StateHandler.h"
+#include "SwitchHandler.h"
 #include "Logger.h"
 
 extern "C" {
@@ -57,7 +57,7 @@ int main() {
     new Greenhouse(rtu_client, OLED_SDP600_I2C);
     new Display(OLED_SDP600_I2C);
     new Logger(CLI_UART);
-    new StateHandler();
+    new SwitchHandler();
 
     Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();
