@@ -1,10 +1,9 @@
 #include <memory>
 #include <pico/stdio.h>
-#include "FreeRTOS.h"
 #include "uart/PicoOsUart.h"
 #include "Greenhouse.h"
 #include "Display.h"
-#include "SwitchHandler.h"
+#include "StateHandler.h"
 #include "Logger.h"
 
 extern "C" {
@@ -58,7 +57,7 @@ int main() {
     new Greenhouse(rtu_client, OLED_SDP600_I2C);
     new Display(OLED_SDP600_I2C);
     new Logger(CLI_UART);
-    new SwitchHandler();
+    new StateHandler();
 
     Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();

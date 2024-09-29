@@ -7,25 +7,31 @@
 
 #include "FreeRTOS.h"
 #include "queue.h"
-#include "SwitchHandler.h"
 
 namespace SW {
     class Button {
     public:
-        Button(uint pin);
+        explicit Button(uint pin, gpio_irq_callback_t irqCallback);
+        void set_irq(bool state) const;
 
-        const std::string mName;
+        const uint mPin;
     private:
-        uint mPin;
+        const gpio_irq_callback_t mIRQCallback;
+        uint32_t mEventMask;
     };
+
+    ///
 
     class Rotor {
     public:
-        explicit Rotor(uint pin_irq = SwitchHandler::ROT_A, uint pin_clock = SwitchHandler::ROT_B);
+        explicit Rotor(uint pin_irq, uint pin_clock, gpio_irq_callback_t irqCallback);
+        void set_irq(bool state) const;
 
+        const uint mPinA;
+        const uint mPinB;
     private:
-        uint mPinIRQ;
-        uint mPinCLK;
+        const gpio_irq_callback_t mIRQCallback;
+        uint32_t mEventMask;
     };
 }
 
