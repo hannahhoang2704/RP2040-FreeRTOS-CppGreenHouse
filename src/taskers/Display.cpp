@@ -35,6 +35,7 @@ void Display::display() {
         mSSD1306.text("Boot!", 46, 28, !color);
         mSSD1306.show();
         color = !color;
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(2000));
+        Logger::log("Displaying...\n"); //test the log including the task name
     }
 }

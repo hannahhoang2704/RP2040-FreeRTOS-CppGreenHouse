@@ -6,14 +6,13 @@
 using namespace std;
 
 Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client, const shared_ptr<PicoI2C>&pressure_sensor_I2C) :
-        mTaskName("Greenhouse"),
         mCO2(modbus_client),
         mHumidity(modbus_client),
         mTemperature(modbus_client),
         mPressure(pressure_sensor_I2C),
         mMIO12_V(modbus_client, 1, 0) {
     if (xTaskCreate(task_automate_greenhouse,
-                    mTaskName.c_str(),
+                    "GREENHOUSE",
                     512,
                     (void *) this,
                     tskIDLE_PRIORITY + 3,
@@ -36,16 +35,16 @@ void Greenhouse::automate_greenhouse() {
     stringstream ss;
     while (true) {
         ss << setw(5) << setprecision(1) << fixed << mCO2.update();
-        Logger::log("Greenhouse: GMP252:    CO2: " + ss.str() + " ppm\n");
+        Logger::log("GMP252:    CO2: " + ss.str() + " ppm\n");
         ss.str("");
         ss << setw(5) << setprecision(1) << fixed << mTemperature.update_GMP252();
-        Logger::log("Greenhouse: GMP252:   Temp: " + ss.str() + " C\n");
+        Logger::log("GMP252:   Temp: " + ss.str() + " C\n");
         ss.str("");
         ss << setw(5) << setprecision(1) << fixed << mHumidity.update();
-        Logger::log("Greenhouse:  HMP60: RelHum: " + ss.str() + " %%\n");
+        Logger::log("HMP60: RelHum: " + ss.str() + " %%\n");
         ss.str("");
         ss << setw(5) << setprecision(1) << fixed << mTemperature.update_HMP60();
-        Logger::log("Greenhouse:  HMP60:   Temp: " + ss.str() + " C\n");
+        Logger::log("HMP60:   Temp: " + ss.str() + " C\n");
         ss.str("");
         Logger::log("Pressure value is %d\n", mPressure.update_SDP610());
         vTaskDelay(pdMS_TO_TICKS(1000));

@@ -15,7 +15,6 @@ class Greenhouse {
 public:
     Greenhouse(const std::shared_ptr<ModbusClient> &modbus_client, const std::shared_ptr<PicoI2C> &pressure_sensor_I2C);
 
-    const std::string mTaskName;
 private:
     void automate_greenhouse();
 

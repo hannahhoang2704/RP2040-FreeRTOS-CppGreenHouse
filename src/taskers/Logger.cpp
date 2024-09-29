@@ -20,21 +20,38 @@ void Logger::logger_task(void *params) {
     logger->run();
 }
 
+const char* Logger::get_task_name() {
+    const char *taskName;
+    if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
+        TaskHandle_t currentTask = xTaskGetCurrentTaskHandle();
+        if (currentTask != nullptr) {
+            taskName = pcTaskGetName(currentTask);
+        } else {
+            taskName = "Unknown";
+        }
+    } else {
+        taskName = "Pre-scheduler";
+    }
+    return taskName;
+}
+
 void Logger::log(const char *format, uint32_t d1, uint32_t d2) {
-    uint64_t timestamp = time_us_64() / 1000;
-    debugEvent event = {.format = format, .timestamp = timestamp, .data = { d1, d2}};
+    uint64_t timestamp = time_us_64() / 1000000;
+    const char *taskName = get_task_name();
+    debugEvent event = {.format = format, .timestamp = timestamp, .taskName = taskName, .data = {d1, d2}};
     xQueueSendToBack(mSyslog_queue, &event, 0);
 }
 
 void Logger::log(const std::string& string) {
-    debugEvent dbgE {string.c_str(), time_us_64() / 1000000, {0, 0}};
+    const char *taskName = get_task_name();
+    debugEvent dbgE {string.c_str(), time_us_64() / 1000000, .taskName = taskName, .data={0, 0}};
     xQueueSendToBack(mSyslog_queue, &dbgE, 0);
 }
 
 void Logger::run() {
     while(true){
         if(xQueueReceive(mSyslog_queue, &mDebugEvent, portMAX_DELAY) == pdTRUE){
-            offset = snprintf(buffer, sizeof(buffer), "[%llu ms] ", mDebugEvent.timestamp);
+            offset = snprintf(buffer, sizeof(buffer), "[%llu s] [%s] ", mDebugEvent.timestamp, mDebugEvent.taskName);
             snprintf(buffer + offset, sizeof(buffer) - offset, mDebugEvent.format, mDebugEvent.data[0], mDebugEvent.data[1]);
             mCLI_UART->send(buffer);
         }
