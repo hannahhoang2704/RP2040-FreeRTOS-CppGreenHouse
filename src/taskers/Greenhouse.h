@@ -13,6 +13,7 @@ enum greenhouse_notifications {
 #include "uart/PicoOsUart.h"
 #include "LED.h"
 #include "modbus/ModbusRegister.h"
+#include "i2c/PicoI2C.h"
 #include "Sensor.h"
 #include "Actuator.h"
 #include "RTOS_infrastructure.h"

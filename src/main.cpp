@@ -8,6 +8,8 @@
 #include "SwitchHandler.h"
 #include "Logger.h"
 #include "RTOS_infrastructure.h"
+#include "EEPROM.h"
+#include "Storage.h"
 
 extern "C" {
 uint32_t read_runtime_ctr(void) {
@@ -42,7 +44,7 @@ const struct {
     uint ctrl_nr = 0;
     uint sda_pin = 16;
     uint scl_pin = 17;
-    uint baud = 12345; // ? EEPROM
+    uint baud = 100000;
 } I2C0_s;
 
 using namespace std;
@@ -55,6 +57,7 @@ int main() {
     auto modbusUART = make_shared<PicoOsUart>(UART1_s.ctrl_nr, UART1_s.tx_pin, UART1_s.rx_pin, UART1_s.baud,UART1_s.stop_bits);
     auto OLED_SDP600_I2C = make_shared<PicoI2C>(I2C1_s.ctrl_nr, I2C1_s.baud);
     auto rtu_client = make_shared<ModbusClient>(modbusUART);
+    auto EEPROM_I2C = make_shared<PicoI2C>(I2C0_s.ctrl_nr, I2C0_s.baud);
 
     /// RTOS infrastructure
     // for passing mutual RTOS infrastructure to requiring taskers
@@ -84,7 +87,8 @@ int main() {
     new Display(OLED_SDP600_I2C, iRTOS);
     new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
     new Logger(CLI_UART);
-    new SwitchHandler(iRTOS);
+    new Storage(EEPROM_I2C);
+//  new SwitchHandler(iRTOS);
 
     Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();
