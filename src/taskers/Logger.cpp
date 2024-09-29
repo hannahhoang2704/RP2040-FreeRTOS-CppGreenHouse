@@ -1,7 +1,6 @@
 //
 // Created by Hanh Hoang on 24.9.2024.
 //
-#include <cstdarg>
 #include "Logger.h"
 
 QueueHandle_t Logger::mSyslog_queue = xQueueCreate(30, sizeof(debugEvent));
@@ -55,7 +54,7 @@ void Logger::log(const char *format, ...) {
 void Logger::run() {
     while (true) {
         if (xQueueReceive(mSyslog_queue, &mDebugEvent, portMAX_DELAY) == pdTRUE) {
-            int offset = snprintf(buffer, sizeof(buffer), "[%llu s] [%s] ", mDebugEvent.timestamp, mDebugEvent.taskName);
+            offset = snprintf(buffer, sizeof(buffer), "[%llu s] [%s] ", mDebugEvent.timestamp, mDebugEvent.taskName);
             strncat(buffer, mDebugEvent.message, sizeof(buffer) - offset);
             mCLI_UART->send(buffer);
         }

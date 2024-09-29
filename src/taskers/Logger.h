@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cstring>
 #include <hardware/timer.h>
+#include <cstdarg>
 
 #include "FreeRTOS.h"
 #include "queue.h"
