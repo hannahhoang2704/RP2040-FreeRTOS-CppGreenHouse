@@ -32,21 +32,24 @@ void Greenhouse::automate_greenhouse() {
     Logger::log("Initiated GREENHOUSE task\n");
     mMIO12_V.write(300);
     mMIO12_V.write(300);
+    Logger::log("Initiated GREENHOUSE task\n");
+    mMIO12_V.write(100);
+    mMIO12_V.write(100);
     stringstream ss;
     while (true) {
-        ss << setw(5) << setprecision(1) << fixed << mCO2.update();
-        Logger::log("GMP252:    CO2: " + ss.str() + " ppm\n");
-        ss.str("");
-        ss << setw(5) << setprecision(1) << fixed << mTemperature.update_GMP252();
-        Logger::log("GMP252:   Temp: " + ss.str() + " C\n");
-        ss.str("");
-        ss << setw(5) << setprecision(1) << fixed << mHumidity.update();
-        Logger::log("HMP60: RelHum: " + ss.str() + " %%\n");
-        ss.str("");
-        ss << setw(5) << setprecision(1) << fixed << mTemperature.update_HMP60();
-        Logger::log("HMP60:   Temp: " + ss.str() + " C\n");
-        ss.str("");
-        Logger::log("Pressure value is %d\n", mPressure.update_SDP610());
+        Logger::log("Pressure Sensor is %d\n", 40);
+        vTaskDelay(1);
+        Logger::log("Test Float val: %.2f\n", 25.65);
+        vTaskDelay(1);
+        Logger::log("CO2 is %.1f ppm\n", mCO2.update());
+        vTaskDelay(1);
+        Logger::log("Temp from GMP252 is %.1f C\n", mTemperature.update_GMP252());
+        vTaskDelay(1);
+        Logger::log("Humidity is %.1f %%\n", mHumidity.update());
+        vTaskDelay(1);
+        Logger::log("Temp from HMP60 is %.1f C\n", mTemperature.update_HMP60());
+
+
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

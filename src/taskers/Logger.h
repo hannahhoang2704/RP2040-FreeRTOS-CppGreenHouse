@@ -16,14 +16,12 @@
 
 
 #include "uart/PicoOsUart.h"
-#define BUFFER_SIZE 125
+#define BUFFER_SIZE 128
 
 class Logger{
 public:
     Logger(std::shared_ptr<PicoOsUart> uart_sp);
-//    static void log(const char* format, ...);
-    static void log(const char *format, uint32_t d1=0, uint32_t d2=0);
-    static void log(const std::string& string);
+    static void log(const char* format, ...);
 
 private:
     void run();
@@ -32,13 +30,12 @@ private:
     TaskHandle_t mTaskHandle;
     std::shared_ptr<PicoOsUart> mCLI_UART;
     static QueueHandle_t mSyslog_queue;
-    char buffer[BUFFER_SIZE];
+    char buffer[256];
     int offset;
     struct debugEvent {
-        const char *format;
+        char message[BUFFER_SIZE];
         uint64_t timestamp;
         const char *taskName;
-        uint32_t data[2];
     }mDebugEvent;
 
 };

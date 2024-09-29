@@ -1,6 +1,7 @@
 //
 // Created by Hanh Hoang on 24.9.2024.
 //
+#include <cstdarg>
 #include "Logger.h"
 
 QueueHandle_t Logger::mSyslog_queue = xQueueCreate(30, sizeof(debugEvent));
@@ -35,24 +36,27 @@ const char* Logger::get_task_name() {
     return taskName;
 }
 
-void Logger::log(const char *format, uint32_t d1, uint32_t d2) {
+void Logger::log(const char *format, ...) {
     uint64_t timestamp = time_us_64() / 1000000;
     const char *taskName = get_task_name();
-    debugEvent event = {.format = format, .timestamp = timestamp, .taskName = taskName, .data = {d1, d2}};
+    char buf[BUFFER_SIZE];
+
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, sizeof(buf), format, args);
+    va_end(args);
+
+    debugEvent event = {.timestamp = timestamp, .taskName = taskName};
+    strncpy(event.message, buf, sizeof(event.message) - 1);
+    event.message[sizeof(event.message) - 1] = '\0';
     xQueueSendToBack(mSyslog_queue, &event, 0);
 }
 
-void Logger::log(const std::string& string) {
-    const char *taskName = get_task_name();
-    debugEvent dbgE {string.c_str(), time_us_64() / 1000000, .taskName = taskName, .data={0, 0}};
-    xQueueSendToBack(mSyslog_queue, &dbgE, 0);
-}
-
 void Logger::run() {
-    while(true){
-        if(xQueueReceive(mSyslog_queue, &mDebugEvent, portMAX_DELAY) == pdTRUE){
-            offset = snprintf(buffer, sizeof(buffer), "[%llu s] [%s] ", mDebugEvent.timestamp, mDebugEvent.taskName);
-            snprintf(buffer + offset, sizeof(buffer) - offset, mDebugEvent.format, mDebugEvent.data[0], mDebugEvent.data[1]);
+    while (true) {
+        if (xQueueReceive(mSyslog_queue, &mDebugEvent, portMAX_DELAY) == pdTRUE) {
+            int offset = snprintf(buffer, sizeof(buffer), "[%llu s] [%s] ", mDebugEvent.timestamp, mDebugEvent.taskName);
+            strncat(buffer, mDebugEvent.message, sizeof(buffer) - offset);
             mCLI_UART->send(buffer);
         }
     }
