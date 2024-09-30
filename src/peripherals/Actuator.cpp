@@ -8,15 +8,13 @@ namespace Actuator {
             mFanCounter(modbusClient, server, regFanCounter)
     {}
 
-    void Fan::set_power(int16_t newPower) {
-        if (newPower > MAX_POWER) newPower = MAX_POWER;
-        else if (newPower < MIN_POWER) newPower = MIN_POWER;
-        // the test-fan needs a bit of a kick if its completely still
-        if (mSetPower == OFF && newPower != OFF)
-            for (uint8_t attempt = 0; !running() && attempt < 3; ++attempt)
-                mFanPower.write(MAX_POWER);
-        mFanPower.write(newPower);
-        mSetPower = newPower;
+    void Fan::set_power(int16_t permilles) {
+        if (permilles > MAX_POWER) permilles = MAX_POWER;
+        else if (permilles < MIN_POWER) permilles = MIN_POWER;
+        // the test-fan needs a bit of a kick from complete stillness
+        if (mSetPower != OFF) mFanPower.write(MAX_POWER);
+        mSetPower = permilles;
+        mFanPower.write(mSetPower);
     }
 
     bool Fan::running() {
@@ -34,16 +32,16 @@ namespace Actuator {
 
     ///
 
-    CO2_Emitter::CO2_Emitter(int gpio) {
-        gpio_init(gpio);
-        gpio_set_dir(gpio, GPIO_OUT);
+    CO2_Emitter::CO2_Emitter(int gpio) : mPin(gpio) {
+        gpio_init(mPin);
+        gpio_set_dir(mPin, GPIO_OUT);
     }
 
-    void CO2_Emitter::put_state(bool state) {
-        gpio_put(mGpio, state);
+    void CO2_Emitter::put_state(bool state) const {
+        gpio_put(mPin, state);
     }
 
     bool CO2_Emitter::get_state() const {
-        return gpio_get(mGpio);
+        return gpio_get(mPin);
     }
 } // Actuator

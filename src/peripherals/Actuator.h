@@ -42,10 +42,10 @@ namespace Actuator {
     class CO2_Emitter {
     public:
         CO2_Emitter(int gpio = SodaStream.gpio);
-        void put_state(bool state);
+        void put_state(bool state) const;
         bool get_state() const;
     private:
-        uint mGpio;
+        uint mPin;
     };
 
 } // Actuator
