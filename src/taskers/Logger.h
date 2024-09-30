@@ -23,6 +23,8 @@ class Logger{
 public:
     Logger(std::shared_ptr<PicoOsUart> uart_sp);
     static void log(const char* format, ...);
+    static void log(const std::string &string);
+    static uint32_t mLost_Log_event;
 
 private:
     void run();

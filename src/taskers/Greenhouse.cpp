@@ -38,13 +38,11 @@ void Greenhouse::automate_greenhouse() {
     stringstream ss;
     while (true) {
         Logger::log("Pressure Sensor is %d\n", 40);
-        vTaskDelay(1);
-        Logger::log("Test float val: %.2f\n", 25.65);
-        vTaskDelay(1);
-        Logger::log("CO2 is %.1f ppm\n", mCO2.update());
-        vTaskDelay(1);
+        ss << setw(5) << setprecision(1) << fixed << mCO2.update();
+        Logger::log("GMP252:    CO2: " + ss.str() + " ppm\n");
+        ss.str("");
+//        Logger::log("CO2 is %.1f ppm\n", mCO2.update());
         Logger::log("Temp from GMP252 is %.1f C and humidity is %.1f %%\n", mTemperature.update_GMP252(), mHumidity.update());
-        vTaskDelay(1);
         Logger::log("Temp from HMP60 is %.1f C\n", mTemperature.update_HMP60());
 
 
