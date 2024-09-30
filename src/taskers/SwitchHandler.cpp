@@ -86,27 +86,32 @@ void SwitchHandler::rot_event() {
             mEvent = mEventData.gpio == mRotor.mPinA ? ROT_COUNTER_CLOCKWISE : ROT_CLOCKWISE;
         }
         // execute input according to state
-        if (mState == STATUS) {
-            if (mEvent == ROT_CLOCKWISE) {
-                mPendingCO2Target += CO2_INCREMENT;
-                Logger::log("SWH: Pending CO2 adjustment: +%hd => %hd\n", CO2_INCREMENT, mPendingCO2Target);
-            } else if (mEvent == ROT_COUNTER_CLOCKWISE) {
-                mPendingCO2Target -= CO2_INCREMENT;
-                Logger::log("SWH: Pending CO2 adjustment: -%hd => %hd\n", CO2_INCREMENT, mPendingCO2Target);
-            }
-        } else {
-            if (mEvent == ROT_CLOCKWISE) {
-                if (inc_pending_char())
-                    Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
-            } else if (mEvent == ROT_COUNTER_CLOCKWISE) {
-                if (dec_pending_char())
-                    Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
+        if (mEvent == mPrevRotation) {
+            if (mState == STATUS) {
+                if (mEvent == ROT_CLOCKWISE) {
+                    mPendingCO2Target += CO2_INCREMENT;
+                    Logger::log("SWH: Pending CO2 adjustment: +%hd => %hd\n", CO2_INCREMENT, mPendingCO2Target);
+                } else if (mEvent == ROT_COUNTER_CLOCKWISE) {
+                    mPendingCO2Target -= CO2_INCREMENT;
+                    Logger::log("SWH: Pending CO2 adjustment: -%hd => %hd\n", CO2_INCREMENT, mPendingCO2Target);
+                }
+            } else {
+                if (mEvent == ROT_CLOCKWISE) {
+                    if (inc_pending_char())
+                        Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
+                } else if (mEvent == ROT_COUNTER_CLOCKWISE) {
+                    if (dec_pending_char())
+                        Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
+                }
             }
         }
+        mPrevRotation = mEvent;
     }
 }
 
 void SwitchHandler::button_event() {
+    // reset rotator
+    mPrevRotation = UNKNOWN;
     // debounce button
     if (mEventData.timeStamp - mPrevEventTime[mEventData.gpio] > mPressDebounce_us) {
         mPrevEventTime[mEventData.gpio] = mEventData.timeStamp;

@@ -39,7 +39,7 @@ public:
         CONNECTING
     };
 
-    enum relog_phase {
+    enum network_phase {
         IP,
         USERNAME,
         PASSWORD
@@ -83,7 +83,7 @@ private:
         ROT_RELEASE
     } mEvent{UNKNOWN};
 
-    const uint64_t mPressDebounce_us{200000};
+    const uint64_t mPressDebounce_us{400000};
     std::map<uint, uint64_t> mPrevEventTime;
 
     /// state data
@@ -94,9 +94,10 @@ private:
     int16_t mCurrCO2Target{0};
     int16_t mPendingCO2Target{0};
     char mPendingChar{INIT_CHAR};
-    relog_phase mRelogPhase{IP};
+    network_phase mRelogPhase{IP};
     std::vector<std::string> mRelogStrings{"", "", ""};
     uint64_t mPrevBackspace{0};
+    swEvent mPrevRotation{UNKNOWN};
 };
 
 
