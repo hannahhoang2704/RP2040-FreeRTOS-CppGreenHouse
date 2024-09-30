@@ -1,6 +1,5 @@
 #include <memory>
 #include <pico/stdio.h>
-#include "FreeRTOS.h"
 #include "uart/PicoOsUart.h"
 #include "Greenhouse.h"
 #include "Display.h"
