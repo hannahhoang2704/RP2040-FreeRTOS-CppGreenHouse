@@ -72,7 +72,7 @@ namespace Sensor {
 
 
 
-    PressureSensor::PressureSensor(std::shared_ptr<PicoI2C> &i2c_sp):
+    PressureSensor::PressureSensor(const std::shared_ptr<PicoI2C> &i2c_sp):
     mI2C(i2c_sp){
         mDevAddr = SDP610_s.regAddrPressure;
     }

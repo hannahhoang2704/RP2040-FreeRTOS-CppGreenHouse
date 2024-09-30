@@ -13,7 +13,7 @@
 
 class Greenhouse {
 public:
-    Greenhouse(const std::shared_ptr<ModbusClient> &modbus_client, std::shared_ptr<PicoI2C> &pressureSensorI2C);
+    Greenhouse(const std::shared_ptr<ModbusClient> &modbus_client, const std::shared_ptr<PicoI2C> &pressure_sensor_I2C);
 
     const std::string mTaskName;
 private:
@@ -25,7 +25,7 @@ private:
     Sensor::CO2 mCO2;
     Sensor::Humidity mHumidity;
     Sensor::Temperature mTemperature;
-    Sensor::PressureSensor mPressureSensor;
+    Sensor::PressureSensor mPressure;
     ModbusRegister mMIO12_V;
 };
 

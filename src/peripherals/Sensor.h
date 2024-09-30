@@ -76,7 +76,7 @@ namespace Sensor {
 
     class PressureSensor {
     public:
-        PressureSensor(std::shared_ptr<PicoI2C> &i2c_sp);
+        PressureSensor(const std::shared_ptr<PicoI2C> &i2c_sp);
         int update_SDP610();
         int value_SDP610() const;
     private:

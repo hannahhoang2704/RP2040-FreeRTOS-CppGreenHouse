@@ -5,12 +5,12 @@
 
 using namespace std;
 
-Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client, shared_ptr<PicoI2C>&pressureSensorI2C) :
+Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client, const shared_ptr<PicoI2C>&pressure_sensor_I2C) :
         mTaskName("Greenhouse"),
         mCO2(modbus_client),
         mHumidity(modbus_client),
         mTemperature(modbus_client),
-        mPressureSensor(pressureSensorI2C),
+        mPressure(pressure_sensor_I2C),
         mMIO12_V(modbus_client, 1, 0) {
     if (xTaskCreate(task_automate_greenhouse,
                     mTaskName.c_str(),
@@ -47,7 +47,7 @@ void Greenhouse::automate_greenhouse() {
         ss << setw(5) << setprecision(1) << fixed << mTemperature.update_HMP60();
         Logger::log("Greenhouse:  HMP60:   Temp: " + ss.str() + " C\n");
         ss.str("");
-        Logger::log("Pressure value is %d\n", mPressureSensor.update_SDP610());
+        Logger::log("Pressure value is %d\n", mPressure.update_SDP610());
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
