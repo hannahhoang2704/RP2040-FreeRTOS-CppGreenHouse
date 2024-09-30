@@ -69,4 +69,23 @@ namespace Sensor {
     float Temperature::value_average() const {
         return (mTempGMP252.f + static_cast<float>(mTempHMP60)) / 2;
     }
+
+
+
+    PressureSensor::PressureSensor(const std::shared_ptr<PicoI2C> &i2c_sp):
+    mI2C(i2c_sp){
+        mDevAddr = SDP610_s.regAddrPressure;
+    }
+
+    int PressureSensor::update_SDP610() {
+        mI2C->transaction(mDevAddr, trigger_measurement_cmd, 1, mBuffer, buffer_len);
+        vTaskDelay(100);
+        mPressure_value = ((mBuffer[0] << 8) | mBuffer[1]) / differential_pressure * correction_factor;
+        mPressure_value = (mPressure_value <= SDP610_s.minPressure) ? 0 : (mPressure_value >= SDP610_s.maxPressure) ? 0 : mPressure_value;
+        return mPressure_value;
+    }
+
+    int PressureSensor::value_SDP610() const {
+        return mPressure_value;
+    }
 }
