@@ -10,11 +10,10 @@
 #include "LED.h"
 #include "modbus/ModbusRegister.h"
 #include "Sensor.h"
-#include "Pressure_sensor.h"
 
 class Greenhouse {
 public:
-    Greenhouse(const std::shared_ptr<ModbusClient> &modbus_client, std::shared_ptr<PicoI2C> pressureSensorI2C);
+    Greenhouse(const std::shared_ptr<ModbusClient> &modbus_client, std::shared_ptr<PicoI2C> &pressureSensorI2C);
 
     const std::string mTaskName;
 private:
@@ -26,7 +25,7 @@ private:
     Sensor::CO2 mCO2;
     Sensor::Humidity mHumidity;
     Sensor::Temperature mTemperature;
-    PressureSensor mPressureSensor;
+    Sensor::PressureSensor mPressureSensor;
     ModbusRegister mMIO12_V;
 };
 

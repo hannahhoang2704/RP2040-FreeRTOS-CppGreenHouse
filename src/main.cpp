@@ -6,7 +6,6 @@
 #include "Display.h"
 #include "SwitchHandler.h"
 #include "Logger.h"
-#include "Pressure_sensor.h"
 
 extern "C" {
 uint32_t read_runtime_ctr(void) {

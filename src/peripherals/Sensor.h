@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include "modbus/ModbusRegister.h"
+#include "i2c/PicoI2C.h"
 
 namespace Sensor {
 
@@ -17,6 +18,12 @@ namespace Sensor {
         int regAddrRelHum = 256;
         int regAddrTemp = 257;
     } HMP60_s;
+
+    static const struct {
+        int regAddrPressure = 0x40;
+        int maxPressure = 125;
+        int minPressure = 0;
+    } SDP610_s;
 
     union u32_f_u {
         uint32_t u32;
@@ -67,7 +74,21 @@ namespace Sensor {
         float mTempAvg{0};
     };
 
-    // Pressure missing
+    class PressureSensor {
+    public:
+        PressureSensor(std::shared_ptr<PicoI2C> &i2c_sp);
+        int update_SDP610();
+        int value_SDP610() const;
+    private:
+        const float correction_factor = 0.95;
+        const uint8_t differential_pressure = 240;
+        static const int buffer_len = 2;
+        const uint8_t trigger_measurement_cmd[1] = {0xF1};
+        std::shared_ptr<PicoI2C> mI2C;
+        uint8_t mDevAddr;
+        uint8_t mBuffer[buffer_len];
+        int mPressure_value;
+    };
 
 } // Sensor
 
