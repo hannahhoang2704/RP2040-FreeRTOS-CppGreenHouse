@@ -27,7 +27,7 @@ namespace Actuator {
     }
 
     int16_t Fan::read_power() {
-        return static_cast<int16_t>(mFanPower.read());
+        return (mSetPower = static_cast<int16_t>(mFanPower.read()));
     }
 
     ///
