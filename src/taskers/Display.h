@@ -39,6 +39,7 @@ private:
     TaskHandle_t mTaskHandle;
     ssd1306os mSSD1306;
 
+    /// printing axioms
     static const uint8_t OLED_WIDTH {128};
     static const uint8_t OLED_HEIGHT{64};
     static const uint8_t CHAR_WIDTH{8};
@@ -54,7 +55,8 @@ private:
     static const uint8_t STATUS_HUM_Y {1 + (CHAR_HEIGHT + STATUS_GAP) * 4};
     static const uint8_t STATUS_TEMP_Y{1 + (CHAR_HEIGHT + STATUS_GAP) * 5};
 
-    static const uint8_t STATUS_VALUE_X{CHAR_WIDTH * 6};
+    static const uint8_t STATUS_VALUE_X{CHAR_WIDTH * 6 - 1};
+    static const uint8_t STATUS_VALUE_W{6};
 
     static const uint8_t NETWORK_DESC_IP_Y  {22 * 0};
     static const uint8_t NETWORK_DESC_SSID_Y{22 * 1};
@@ -71,7 +73,7 @@ private:
     int16_t mCO2TargetCurr{0};
     int16_t mCO2TargetPending{0};
     float mCO2Measurement{0};
-    float mPressure{0};
+    float mPressure{2000};
     int16_t mFan{0};
     float mRelHum{0};
     float mTemp{0};
@@ -79,12 +81,7 @@ private:
     network_phase mRelogPhase{NEW_IP};
     std::vector<std::string> mRelogStrings{"", "", ""};
 
-    std::stringstream mCO2T_ss;
-    std::stringstream mCO2M_ss;
-    std::stringstream mPressure_ss;
-    std::stringstream mFan_ss;
-    std::stringstream mRelHum_ss;
-    std::stringstream mTemp_ss;
+    std::stringstream ssValue;
 
     /// RTOS infrastructure
     RTOS_infrastructure iRTOS;

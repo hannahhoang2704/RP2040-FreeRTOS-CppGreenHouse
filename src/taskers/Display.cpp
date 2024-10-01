@@ -34,16 +34,17 @@ void Display::display() {
     mSSD1306.init();
     print_status_base();
     reprint_CO2_target();
+    reprint_CO2_measurement();
+    reprint_pressure();
+    reprint_fan();
+    reprint_hum();
+    reprint_temp();
     mSSD1306.text("Connected", 0, CONNECTION_Y);
     mSSD1306.show();
 
     while (true) {
         mNotification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         mSSD1306.fill(0);
-
-        vTaskDelay(1);
-        Logger::log("Note: " + to_string(mNotification) + "\n");
-        vTaskDelay(1);
         update();
         mSSD1306.show();
     }
@@ -51,70 +52,27 @@ void Display::display() {
 
 void Display::update() {
     if (mNotification & bSTATE) {
-        xQueuePeek(iRTOS.qState, &mState, portMAX_DELAY);
-        print_new_state();
+        mState = mState == STATUS ? NETWORK : STATUS;
         if (mState == STATUS) {
+            mCO2TargetPending = mCO2TargetCurr;
+        } else {
             for (std::string &str: mRelogStrings) str.clear();
+            mRelogPhase = NEW_IP;
         }
     }
+
     if (mState == STATUS) {
         print_status_base();
-        if (mNotification & bCO2_TARGET) {
-            xQueuePeek(iRTOS.qCO2TargetCurr, &mCO2TargetCurr, 0);
-            xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0);
-            reprint_CO2_target();
-        }
-        if (mNotification & bCO2_MEASURE) {
-
-        }
-        if (mNotification & bPRESSURE);
-        if (mNotification & bFAN);
-        if (mNotification & bHUMIDITY);
-        if (mNotification & bTEMPERATURE);
-
-    } else if (mState == NETWORK) {
+        reprint_CO2_target();
+        reprint_CO2_measurement();
+        reprint_pressure();
+        reprint_fan();
+        reprint_hum();
+        reprint_temp();
+    } else {
         print_network_base();
-        if (mNotification & bNETWORK_PHASE) {
-            xQueuePeek(iRTOS.qNetworkPhase, &mRelogPhase, portMAX_DELAY);
-            print_network_base();
-        }
-        if (mNotification & bCHAR) {
-            xQueuePeek(iRTOS.qCharPending, &mCharPending, portMAX_DELAY);
-        }
-        if (mNotification & bINSERT_CHAR) {
-            xQueuePeek(iRTOS.qCharPending, &mCharPending, 0);
-            mRelogStrings[mRelogPhase] += mCharPending;
-            mCharPending = INIT_CHAR;
-        }
-        if (mNotification & bBACKSPACE) {
-            mRelogStrings[mRelogPhase].pop_back();
-            mCharPending = INIT_CHAR;
-        }
-        if (mNotification & (bCHAR | bBACKSPACE | bNETWORK_PHASE | bINSERT_CHAR)) {
-            reprint_network_pending_char();
-            reprint_network_input();
-        }
-    }
-    if (mNotification & bCONNCETING) {
-        mSSD1306.text("Connecting...", 0, CONNECTION_Y);
-    }
-}
-
-void Display::print_new_state() {
-    switch (mState) {
-        case STATUS:
-            print_status_base();
-            reprint_CO2_target();
-            reprint_CO2_measurement();
-            reprint_pressure();
-            reprint_fan();
-            reprint_hum();
-            reprint_temp();
-            break;
-        case NETWORK:
-            print_network_base();
-            reprint_network_pending_char();
-            break;
+        reprint_network_pending_char();
+        reprint_network_input();
     }
 }
 
@@ -130,37 +88,58 @@ void Display::print_status_base() {
 }
 
 void Display::reprint_CO2_target() {
-    //mSSD1306.rect(STATUS_CO2T_X, STATUS_CO2T_Y - 1, OLED_WIDTH - STATUS_CO2T_X, 9, 0, true);
+    //mSSD1306.rect(STATUS_VALUE_X, STATUS_CO2T_Y - 1, OLED_WIDTH - STATUS_VALUE_X, CHAR_HEIGHT + 1, 0, true);
+    xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0);
+    xQueuePeek(iRTOS.qCO2TargetCurr, &mCO2TargetCurr, 0);
     bool pending = mCO2TargetPending != mCO2TargetCurr;
-    mCO2T_ss.str("");
-    mCO2T_ss << setw(5) << mCO2TargetPending;
-    mCO2T_ss << " ppm";
+    ssValue.str("");
+    ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetPending;
+    ssValue << "   ppm";
 
-    if (pending) mSSD1306.rect(STATUS_VALUE_X, STATUS_CO2T_Y - 1, OLED_WIDTH - STATUS_VALUE_X, 9, pending, true);
-    mSSD1306.text(mCO2T_ss.str(), STATUS_VALUE_X, STATUS_CO2T_Y, !pending);
+    if (pending) mSSD1306.rect(STATUS_VALUE_X - CHAR_WIDTH, STATUS_CO2T_Y - 1,
+                               OLED_WIDTH - STATUS_VALUE_X + CHAR_WIDTH, 9, pending, true);
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_CO2T_Y, !pending);
 }
 
 void Display::reprint_CO2_measurement() {
-    mCO2T_ss.str("");
-    mCO2T_ss << setw(5) << mCO2TargetPending;
-    mCO2T_ss << " ppm";
-    mSSD1306.text(mCO2T_ss.str(), STATUS_VALUE_X, STATUS_CO2M_Y, 1);
+    //xQueuePeek(iRTOS.qCO2Meausure, mCO2Measurement, 0);
+    ssValue.str("");
+    ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mCO2Measurement;
+    ssValue << " ppm";
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_CO2M_Y, 1);
 }
 
 void Display::reprint_pressure() {
-
+    //xQueuePeek(iRTOS.qPressure, mCO2Measurement, 0);
+    ssValue.str("");
+    ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mPressure;
+    ssValue << " ppm";
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_PRES_Y, 1);
 }
 
 void Display::reprint_fan() {
+    //xQueuePeek(iRTOS.qFan, mCO2Measurement, 0);
 
+    ssValue.str("");
+    ssValue << setw(STATUS_VALUE_W - 2) << mFan / 10 << "." << mFan % 10;
+    ssValue << " %";
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_FAN_Y, 1);
 }
 
 void Display::reprint_hum() {
-
+    //xQueuePeek(iRTOS.qHumidity, mCO2Measurement, 0);
+    ssValue.str("");
+    ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mRelHum;
+    ssValue << " %";
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_HUM_Y, 1);
 }
 
 void Display::reprint_temp() {
-
+    //xQueuePeek(iRTOS.qTemperature, mCO2Measurement, 0);
+    ssValue.str("");
+    ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mTemp;
+    ssValue << " C";
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_TEMP_Y, 1);
 }
 
 /// NETWORK Screen
@@ -207,6 +186,7 @@ void Display::reprint_network_input() {
 }
 
 void Display::reprint_network_pending_char() {
+
     size_t str_len = mRelogStrings[mRelogPhase].length();
     bool tooLong = str_len > MAX_OLED_STR_WIDTH - 1;
 

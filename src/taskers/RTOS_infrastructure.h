@@ -27,14 +27,14 @@ enum display_notifications {
     bHUMIDITY       = 0x0020,
     bTEMPERATURE    = 0x0040,
     bNETWORK_PHASE  = 0x0080,
-    bCHAR           = 0x0100,
+    bCHANGE_CHAR    = 0x0100,
     bINSERT_CHAR    = 0x0200,
     bBACKSPACE      = 0x0400,
     bCONNCETING     = 0x0800
 };
 
 struct RTOS_infrastructure {
-    QueueHandle_t qState{nullptr};
+    //QueueHandle_t qState{nullptr};
     QueueHandle_t qNetworkPhase{nullptr};
     QueueHandle_t qCO2TargetPending{nullptr};
     QueueHandle_t qCO2TargetCurr{nullptr};

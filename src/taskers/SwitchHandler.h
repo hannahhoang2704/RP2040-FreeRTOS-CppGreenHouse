@@ -73,12 +73,14 @@ private:
         ROT_PRESS,
         ROT_RELEASE
     } mEvent{UNKNOWN};
-    static const uint64_t mPressDebounce_us{400000};
-    static const uint64_t mRotDebounce_us{30000};
-    uint64_t mPreRotEvent{0};
-    std::map<uint, uint64_t> mPrevEventTime;
+
+    static const uint64_t TASK_NOTIFICATION_RATE_LIMIT_US{30000}; // RTOS task notification doesn't like bombardment
+    static const uint64_t BUTTON_DEBOUNCE{400000};
+    std::map<uint, uint64_t> mPrevEventTimeMap;
     uint64_t mPrevBackspace{0};
     swEvent mPrevRotation{UNKNOWN};
+    uint64_t mPrevDisplayNotificationTime{0};
+    uint32_t mDisplayNote;
 
     /// state data
     static const int16_t CO2_MAX{1500};
