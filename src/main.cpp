@@ -60,21 +60,17 @@ int main() {
     /// RTOS infrastructure
     // for passing mutual RTOS infrastructure to requiring taskers
     RTOS_infrastructure iRTOS {
-            .qProgramState = xQueueCreate(1, sizeof(program_state)),
+            .qState = xQueueCreate(1, sizeof(program_state)),
             .qNetworkPhase = xQueueCreate(1, sizeof(network_phase)),
             .qCO2TargetPending = xQueueCreate(1, sizeof(int16_t)),
             .qCO2TargetCurr = xQueueCreate(1, sizeof(char)),
             .qCharPending = xQueueCreate(1, sizeof(int16_t)),
-            .qNetworkStrings = {[IP] = xQueueCreate(1, sizeof(const char *)),
-                                [USERNAME] = xQueueCreate(1, sizeof(const char *)),
-                                [PASSWORD] = xQueueCreate(1, sizeof(const char *))},
-
-            .sUpdateDisplay = xSemaphoreCreateBinary()
     };
 
     /// taskers
+    auto display = Display(OLED_SDP600_I2C, iRTOS);
+    iRTOS.tDisplay = display.get_handle();
     new Greenhouse(rtu_client, OLED_SDP600_I2C);
-    new Display(OLED_SDP600_I2C, iRTOS);
     new Logger(CLI_UART);
     new SwitchHandler(iRTOS);
 

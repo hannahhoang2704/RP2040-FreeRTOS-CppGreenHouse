@@ -73,19 +73,22 @@ private:
         ROT_PRESS,
         ROT_RELEASE
     } mEvent{UNKNOWN};
-    const uint64_t mPressDebounce_us{400000};
+    static const uint64_t mPressDebounce_us{400000};
+    static const uint64_t mRotDebounce_us{30000};
+    uint64_t mPreRotEvent{0};
     std::map<uint, uint64_t> mPrevEventTime;
     uint64_t mPrevBackspace{0};
     swEvent mPrevRotation{UNKNOWN};
 
     /// state data
-    const char INIT_CHAR{'.'};
-    const int16_t CO2_INCREMENT{1};
-    program_state mState{CONNECTING};
+    static const int16_t CO2_MAX{1500};
+    static const int16_t CO2_MIN{0};
+
+    program_state mState{STATUS};
     int16_t mCO2TargetCurr{0};
     int16_t mCO2TargetPending{0};
     char mCharPending{INIT_CHAR};
-    network_phase mRelogPhase{IP};
+    network_phase mRelogPhase{NEW_IP};
     std::vector<std::string> mRelogStrings{"", "", ""};
 
     /// RTOS infrastructure

@@ -25,8 +25,7 @@ SwitchHandler::SwitchHandler(RTOS_infrastructure RTOSi) :
         mNext(SW_0, irq_handler),
         mBackspace(SW_ROT, irq_handler),
         mRotor(ROT_A, ROT_B, irq_handler),
-        iRTOS(RTOSi)
-        {
+        iRTOS(RTOSi) {
     if (xTaskCreate(task_state_handler,
                     "SW_HANDLER",
                     512,
@@ -37,7 +36,6 @@ SwitchHandler::SwitchHandler(RTOS_infrastructure RTOSi) :
     } else {
         Logger::log("Failed to create SW_HANDLER task\n");
     }
-
 }
 
 void SwitchHandler::task_state_handler(void *params) {
@@ -88,28 +86,27 @@ void SwitchHandler::rot_event() {
             mEvent = mEventData.gpio == mRotor.mPinA ? ROT_COUNTER_CLOCKWISE : ROT_CLOCKWISE;
         }
         // execute input according to state
-        if (mEvent == mPrevRotation) {
+        if (mEvent == mPrevRotation && mEventData.timeStamp - mPreRotEvent > mRotDebounce_us) {
             if (mState == STATUS) {
-                if (mEvent == ROT_CLOCKWISE) {
+                if (mEvent == ROT_CLOCKWISE && mCO2TargetPending < CO2_MAX) {
                     mCO2TargetPending += CO2_INCREMENT;
+                    xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
+                    xTaskNotify(iRTOS.tDisplay, bCO2_TARGET, eSetBits);
                     Logger::log("SWH: Pending CO2 adjustment: +%hd => %hd\n", CO2_INCREMENT, mCO2TargetPending);
-                } else if (mEvent == ROT_COUNTER_CLOCKWISE) {
+                } else if (mEvent == ROT_COUNTER_CLOCKWISE && mCO2TargetPending > 0) {
                     mCO2TargetPending -= CO2_INCREMENT;
+                    xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
+                    xTaskNotify(iRTOS.tDisplay, bCO2_TARGET, eSetBits);
                     Logger::log("SWH: Pending CO2 adjustment: -%hd => %hd\n", CO2_INCREMENT, mCO2TargetPending);
                 }
-                xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
-                xSemaphoreGive(iRTOS.sUpdateDisplay);
             } else {
-                if (mEvent == ROT_CLOCKWISE) {
-                    if (inc_pending_char())
-                        Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
-                } else if (mEvent == ROT_COUNTER_CLOCKWISE) {
-                    if (dec_pending_char())
-                        Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
+                if ((mEvent == ROT_CLOCKWISE && inc_pending_char()) || (mEvent == ROT_COUNTER_CLOCKWISE && dec_pending_char())) {
+                    xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
+                    xTaskNotify(iRTOS.tDisplay, bCHAR, eSetBits);
+                    Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                 }
-                xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
-                xSemaphoreGive(iRTOS.sUpdateDisplay);
             }
+            mPreRotEvent = mEventData.timeStamp;
         }
         mPrevRotation = mEvent;
     }
@@ -125,29 +122,28 @@ void SwitchHandler::button_event() {
             case SW_2:
                 /// change system state -- status or relog
                 // changing system state resets any pending user input
-                mState = mState == STATUS ? RELOG : STATUS;
+                mState = mState == STATUS ? NETWORK : STATUS;
                 if (mState == STATUS) {
                     mCharPending = INIT_CHAR;
                     for (std::string &str: mRelogStrings) str.clear();
-                    xQueueOverwrite(iRTOS.qNetworkStrings[IP], mRelogStrings[IP].c_str());
-                    xQueueOverwrite(iRTOS.qNetworkStrings[USERNAME], mRelogStrings[USERNAME].c_str());
-                    xQueueOverwrite(iRTOS.qNetworkStrings[PASSWORD], mRelogStrings[PASSWORD].c_str());
-                    mRelogPhase = IP;
+                    mRelogPhase = NEW_IP;
+                    xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
                     Logger::log("SWH: State: Status\n");
                     vTaskDelay(1);
                     Logger::log("SWH: CO2 set: %hu\n", mCO2TargetCurr);
                 } else {
                     mCO2TargetPending = mCO2TargetCurr;
+                    xQueueOverwrite(iRTOS.qCO2TargetPending, &mRelogPhase);
                     Logger::log("SWH: State: Relog\n");
                     vTaskDelay(1);
-                    Logger::log("SWH: Writing: IP[" + mRelogStrings[IP] +
-                                "] UN[" + mRelogStrings[USERNAME] +
-                                "] PW[" + mRelogStrings[PASSWORD] + "]\n");
+                    Logger::log("SWH: Writing: IP[" + mRelogStrings[NEW_IP] +
+                                "] UN[" + mRelogStrings[NEW_SSID] +
+                                "] PW[" + mRelogStrings[NEW_PW] + "]\n");
                     vTaskDelay(1);
                     Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                 }
-                xQueueOverwrite(iRTOS.qProgramState, &mState);
-                xSemaphoreGive(iRTOS.sUpdateDisplay);
+                xQueueOverwrite(iRTOS.qState, &mState);
+                xTaskNotify(iRTOS.tDisplay, bSTATE, eSetBits);
                 break;
             case SW_1:
                 /// confirm rotated adjustment
@@ -157,72 +153,57 @@ void SwitchHandler::button_event() {
                     if (mCO2TargetCurr != mCO2TargetPending) {
                         mCO2TargetCurr = mCO2TargetPending;
                         xQueueOverwrite(iRTOS.qCO2TargetCurr, &mCO2TargetCurr);
+                        xTaskNotify(iRTOS.tDisplay, bCO2_TARGET, eSetBits);
                         Logger::log("SWH: CO2 set: %hu\n", mCO2TargetCurr);
                     }
                 } else {
                     mRelogStrings[mRelogPhase] += mCharPending;
-                    xQueueOverwrite(iRTOS.qNetworkStrings[mRelogPhase], mRelogStrings[mRelogPhase].c_str());
-                    Logger::log("SWH: Writing: IP[" + mRelogStrings[IP] +
-                                "] UN[" + mRelogStrings[USERNAME] +
-                                "] PW[" + mRelogStrings[PASSWORD] + "]\n");
+                    Logger::log("SWH: Writing: IP[" + mRelogStrings[NEW_IP] +
+                                "] UN[" + mRelogStrings[NEW_SSID] +
+                                "] PW[" + mRelogStrings[NEW_PW] + "]\n");
                     vTaskDelay(1);
                     mCharPending = INIT_CHAR;
                     Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
-                    xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
+                    xTaskNotify(iRTOS.tDisplay, bINSERT_CHAR, eSetBits);
                 }
                 break;
             case SW_0:
                 /// confirm a series of confirmed rotated adjustments
                 // applies only (?) in relog state when confirming string, moving then on to the next phase
-                if (mState == RELOG) {
+                if (mState == NETWORK) {
                     switch (mRelogPhase) {
-                        case IP:
-                            Logger::log("SWH: Writing: IP[" + mRelogStrings[IP] +
-                                        "] UN[" + mRelogStrings[USERNAME] +
-                                        "] PW[" + mRelogStrings[PASSWORD] + "]\n");
+                        case NEW_IP:
+                            Logger::log("SWH: Writing: IP[" + mRelogStrings[NEW_IP] +
+                                        "] UN[" + mRelogStrings[NEW_SSID] +
+                                        "] PW[" + mRelogStrings[NEW_PW] + "]\n");
                             vTaskDelay(1);
-                            mRelogPhase = USERNAME;
+                            mRelogPhase = NEW_SSID;
                             xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
                             Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                             break;
-                        case USERNAME:
-                            Logger::log("SWH: Writing: IP[" + mRelogStrings[IP] +
-                                        "] UN[" + mRelogStrings[USERNAME] +
-                                        "] PW[" + mRelogStrings[PASSWORD] + "]\n");
+                        case NEW_SSID:
+                            Logger::log("SWH: Writing: IP[" + mRelogStrings[NEW_IP] +
+                                        "] UN[" + mRelogStrings[NEW_SSID] +
+                                        "] PW[" + mRelogStrings[NEW_PW] + "]\n");
                             vTaskDelay(1);
-                            mRelogPhase = PASSWORD;
+                            mRelogPhase = NEW_PW;
                             xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
                             Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                             break;
-                        case PASSWORD:
-                            // TODO: initiate reconnection sequence
-
-                            set_sw_irq(false);
-                            mState = CONNECTING;
-                            xQueueOverwrite(iRTOS.qProgramState, &mState);
-
-                            // TODO: keep Display up to date with reconnection phases
-
-                            Logger::log("SWH: Reconnecting...: IP[" + mRelogStrings[IP] +
-                                        "] UN[" + mRelogStrings[USERNAME] +
-                                        "] PW[" + mRelogStrings[PASSWORD] + "]\n");
-                            vTaskDelay(pdMS_TO_TICKS(5000));
-                            mRelogPhase = IP;
-                            xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
-                            mState = STATUS;
-                            xQueueOverwrite(iRTOS.qProgramState, &mState);
+                        case NEW_PW:
+                            // TODO: order reconnection
 
                             for (std::string &str: mRelogStrings) str.clear();
-                            xQueueOverwrite(iRTOS.qNetworkStrings[IP], mRelogStrings[IP].c_str());
-                            xQueueOverwrite(iRTOS.qNetworkStrings[USERNAME], mRelogStrings[USERNAME].c_str());
-                            xQueueOverwrite(iRTOS.qNetworkStrings[PASSWORD], mRelogStrings[PASSWORD].c_str());
 
-                            set_sw_irq(true);
-                            Logger::log("SWH: Reconnection attempt finished\n");
+                            mState = STATUS;
+                            xQueueOverwrite(iRTOS.qState, &mState);
+                            xTaskNotify(iRTOS.tDisplay, bSTATE, eSetBits);
+
+                            mRelogPhase = NEW_IP;
+                            xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
                             break;
                     }
-                    xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
-                    xSemaphoreGive(iRTOS.sUpdateDisplay);
+                    xTaskNotify(iRTOS.tDisplay, bNETWORK_PHASE, eSetBits);
                 }
                 break;
             case SW_ROT:
@@ -233,22 +214,25 @@ void SwitchHandler::button_event() {
                 if (mState == STATUS) {
                     mCO2TargetPending = mCO2TargetCurr;
                     xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
+                    xTaskNotify(iRTOS.tDisplay, bCO2_TARGET, eSetBits);
                     Logger::log("SWH: CO2 reset: %hu\n", mCO2TargetCurr);
                 } else {
                     if (mRelogStrings[mRelogPhase].empty()) {
-                        if (mRelogPhase != IP) {
-                            mRelogPhase = mRelogPhase == USERNAME ? IP : USERNAME;
+                        if (mRelogPhase != NEW_IP) {
+                            mRelogPhase = mRelogPhase == NEW_SSID ? NEW_IP : NEW_SSID;
                             xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
+                            xTaskNotify(iRTOS.tDisplay, bNETWORK_PHASE, eSetBits);
                             Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                         }
                     } else {
                         mRelogStrings[mRelogPhase].pop_back();
-                        xQueueOverwrite(iRTOS.qNetworkStrings[mRelogPhase], mRelogStrings[mRelogPhase].c_str());
-                        Logger::log("SWH: Writing: IP[" + mRelogStrings[IP] +
-                                    "] UN[" + mRelogStrings[USERNAME] +
-                                    "] PW[" + mRelogStrings[PASSWORD] + "]\n");
+                        Logger::log("SWH: Writing: IP[" + mRelogStrings[NEW_IP] +
+                                    "] UN[" + mRelogStrings[NEW_SSID] +
+                                    "] PW[" + mRelogStrings[NEW_PW] + "]\n");
                         vTaskDelay(1);
                         mCharPending = INIT_CHAR;
+                        xTaskNotify(iRTOS.tDisplay, bBACKSPACE, eSetBits);
+
                         Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                     }
                 }
