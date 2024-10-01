@@ -1,10 +1,13 @@
 #include <memory>
 #include <pico/stdio.h>
+#include "FreeRTOS.h"
+#include "queue.h"
 #include "uart/PicoOsUart.h"
 #include "Greenhouse.h"
 #include "Display.h"
 #include "SwitchHandler.h"
 #include "Logger.h"
+#include "RTOS_infrastructure.h"
 
 extern "C" {
 uint32_t read_runtime_ctr(void) {
@@ -53,11 +56,27 @@ int main() {
     auto OLED_SDP600_I2C = make_shared<PicoI2C>(I2C1_s.ctrl_nr, I2C1_s.baud);
     auto rtu_client = make_shared<ModbusClient>(modbusUART);
 
+
+    /// RTOS infrastructure
+    // for passing mutual RTOS infrastructure to requiring taskers
+    RTOS_infrastructure iRTOS {
+            .qProgramState = xQueueCreate(1, sizeof(program_state)),
+            .qNetworkPhase = xQueueCreate(1, sizeof(network_phase)),
+            .qCO2TargetPending = xQueueCreate(1, sizeof(int16_t)),
+            .qCO2TargetCurr = xQueueCreate(1, sizeof(char)),
+            .qCharPending = xQueueCreate(1, sizeof(int16_t)),
+            .qNetworkStrings = {[IP] = xQueueCreate(1, sizeof(const char *)),
+                                [USERNAME] = xQueueCreate(1, sizeof(const char *)),
+                                [PASSWORD] = xQueueCreate(1, sizeof(const char *))},
+
+            .sUpdateDisplay = xSemaphoreCreateBinary()
+    };
+
     /// taskers
     new Greenhouse(rtu_client, OLED_SDP600_I2C);
-    new Display(OLED_SDP600_I2C);
+    new Display(OLED_SDP600_I2C, iRTOS);
     new Logger(CLI_UART);
-    new SwitchHandler();
+    new SwitchHandler(iRTOS);
 
     Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();

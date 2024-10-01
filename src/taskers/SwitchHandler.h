@@ -9,12 +9,14 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
+#include "semphr.h"
 
 #include "Switch.h"
+#include "RTOS_infrastructure.h"
 
 class SwitchHandler {
 public:
-    SwitchHandler();
+    SwitchHandler(RTOS_infrastructure RTOSi);
 
     static void irq_handler(uint gpio, uint32_t event_mask);
 
@@ -32,18 +34,6 @@ public:
     static const uint ROT_A = 10;
 
     static uint32_t mLostEvents;
-
-    enum state {
-        STATUS,
-        RELOG,
-        CONNECTING
-    };
-
-    enum network_phase {
-        IP,
-        USERNAME,
-        PASSWORD
-    };
 
 private:
     void state_handler();
@@ -69,6 +59,7 @@ private:
     SW::Button mBackspace;
     SW::Rotor mRotor;
 
+    /// sw event handling data
     enum swEvent {
         UNKNOWN = -1,
         SW_2_PRESS,
@@ -82,22 +73,23 @@ private:
         ROT_PRESS,
         ROT_RELEASE
     } mEvent{UNKNOWN};
-
     const uint64_t mPressDebounce_us{400000};
     std::map<uint, uint64_t> mPrevEventTime;
+    uint64_t mPrevBackspace{0};
+    swEvent mPrevRotation{UNKNOWN};
 
     /// state data
     const char INIT_CHAR{'.'};
     const int16_t CO2_INCREMENT{1};
-
-    state mState{CONNECTING};
-    int16_t mCurrCO2Target{0};
-    int16_t mPendingCO2Target{0};
-    char mPendingChar{INIT_CHAR};
+    program_state mState{CONNECTING};
+    int16_t mCO2TargetCurr{0};
+    int16_t mCO2TargetPending{0};
+    char mCharPending{INIT_CHAR};
     network_phase mRelogPhase{IP};
     std::vector<std::string> mRelogStrings{"", "", ""};
-    uint64_t mPrevBackspace{0};
-    swEvent mPrevRotation{UNKNOWN};
+
+    /// RTOS infrastructure
+    RTOS_infrastructure iRTOS;
 };
 
 

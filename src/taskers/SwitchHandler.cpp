@@ -19,12 +19,14 @@ void SwitchHandler::irq_handler(uint gpio, uint32_t event_mask) {
     portYIELD_FROM_ISR(xHigherPriorityWoken);
 }
 
-SwitchHandler::SwitchHandler() :
+SwitchHandler::SwitchHandler(RTOS_infrastructure RTOSi) :
         mToggleState(SW_2, irq_handler),
         mInsert(SW_1, irq_handler),
         mNext(SW_0, irq_handler),
         mBackspace(SW_ROT, irq_handler),
-        mRotor(ROT_A, ROT_B, irq_handler) {
+        mRotor(ROT_A, ROT_B, irq_handler),
+        iRTOS(RTOSi)
+        {
     if (xTaskCreate(task_state_handler,
                     "SW_HANDLER",
                     512,
@@ -51,8 +53,8 @@ void SwitchHandler::state_handler() {
     mState = STATUS;
 
     // TODO: request CO2 target from EEPROM
-    mCurrCO2Target = 0;
-    mPendingCO2Target = mCurrCO2Target;
+    mCO2TargetCurr = 0;
+    mCO2TargetPending = mCO2TargetCurr;
 
     // TODO: order Display to update OLED
 
@@ -89,20 +91,24 @@ void SwitchHandler::rot_event() {
         if (mEvent == mPrevRotation) {
             if (mState == STATUS) {
                 if (mEvent == ROT_CLOCKWISE) {
-                    mPendingCO2Target += CO2_INCREMENT;
-                    Logger::log("SWH: Pending CO2 adjustment: +%hd => %hd\n", CO2_INCREMENT, mPendingCO2Target);
+                    mCO2TargetPending += CO2_INCREMENT;
+                    Logger::log("SWH: Pending CO2 adjustment: +%hd => %hd\n", CO2_INCREMENT, mCO2TargetPending);
                 } else if (mEvent == ROT_COUNTER_CLOCKWISE) {
-                    mPendingCO2Target -= CO2_INCREMENT;
-                    Logger::log("SWH: Pending CO2 adjustment: -%hd => %hd\n", CO2_INCREMENT, mPendingCO2Target);
+                    mCO2TargetPending -= CO2_INCREMENT;
+                    Logger::log("SWH: Pending CO2 adjustment: -%hd => %hd\n", CO2_INCREMENT, mCO2TargetPending);
                 }
+                xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
+                xSemaphoreGive(iRTOS.sUpdateDisplay);
             } else {
                 if (mEvent == ROT_CLOCKWISE) {
                     if (inc_pending_char())
-                        Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
+                        Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                 } else if (mEvent == ROT_COUNTER_CLOCKWISE) {
                     if (dec_pending_char())
-                        Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
+                        Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                 }
+                xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
+                xSemaphoreGive(iRTOS.sUpdateDisplay);
             }
         }
         mPrevRotation = mEvent;
@@ -121,40 +127,48 @@ void SwitchHandler::button_event() {
                 // changing system state resets any pending user input
                 mState = mState == STATUS ? RELOG : STATUS;
                 if (mState == STATUS) {
-                    mPendingChar = INIT_CHAR;
+                    mCharPending = INIT_CHAR;
                     for (std::string &str: mRelogStrings) str.clear();
+                    xQueueOverwrite(iRTOS.qNetworkStrings[IP], mRelogStrings[IP].c_str());
+                    xQueueOverwrite(iRTOS.qNetworkStrings[USERNAME], mRelogStrings[USERNAME].c_str());
+                    xQueueOverwrite(iRTOS.qNetworkStrings[PASSWORD], mRelogStrings[PASSWORD].c_str());
                     mRelogPhase = IP;
                     Logger::log("SWH: State: Status\n");
                     vTaskDelay(1);
-                    Logger::log("SWH: CO2 set: %hu\n", mCurrCO2Target);
+                    Logger::log("SWH: CO2 set: %hu\n", mCO2TargetCurr);
                 } else {
-                    mPendingCO2Target = mCurrCO2Target;
+                    mCO2TargetPending = mCO2TargetCurr;
                     Logger::log("SWH: State: Relog\n");
                     vTaskDelay(1);
                     Logger::log("SWH: Writing: IP[" + mRelogStrings[IP] +
                                 "] UN[" + mRelogStrings[USERNAME] +
                                 "] PW[" + mRelogStrings[PASSWORD] + "]\n");
                     vTaskDelay(1);
-                    Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
+                    Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                 }
+                xQueueOverwrite(iRTOS.qProgramState, &mState);
+                xSemaphoreGive(iRTOS.sUpdateDisplay);
                 break;
             case SW_1:
                 /// confirm rotated adjustment
                 // status = CO2 target
                 // relog = character to string
                 if (mState == STATUS) {
-                    if (mCurrCO2Target != mPendingCO2Target) {
-                        mCurrCO2Target = mPendingCO2Target;
-                        Logger::log("SWH: CO2 set: %hu\n", mCurrCO2Target);
+                    if (mCO2TargetCurr != mCO2TargetPending) {
+                        mCO2TargetCurr = mCO2TargetPending;
+                        xQueueOverwrite(iRTOS.qCO2TargetCurr, &mCO2TargetCurr);
+                        Logger::log("SWH: CO2 set: %hu\n", mCO2TargetCurr);
                     }
                 } else {
-                    mRelogStrings[mRelogPhase] += mPendingChar;
+                    mRelogStrings[mRelogPhase] += mCharPending;
+                    xQueueOverwrite(iRTOS.qNetworkStrings[mRelogPhase], mRelogStrings[mRelogPhase].c_str());
                     Logger::log("SWH: Writing: IP[" + mRelogStrings[IP] +
                                 "] UN[" + mRelogStrings[USERNAME] +
                                 "] PW[" + mRelogStrings[PASSWORD] + "]\n");
                     vTaskDelay(1);
-                    mPendingChar = INIT_CHAR;
-                    Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
+                    mCharPending = INIT_CHAR;
+                    Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
+                    xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
                 }
                 break;
             case SW_0:
@@ -168,7 +182,8 @@ void SwitchHandler::button_event() {
                                         "] PW[" + mRelogStrings[PASSWORD] + "]\n");
                             vTaskDelay(1);
                             mRelogPhase = USERNAME;
-                            Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
+                            xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
+                            Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                             break;
                         case USERNAME:
                             Logger::log("SWH: Writing: IP[" + mRelogStrings[IP] +
@@ -176,13 +191,15 @@ void SwitchHandler::button_event() {
                                         "] PW[" + mRelogStrings[PASSWORD] + "]\n");
                             vTaskDelay(1);
                             mRelogPhase = PASSWORD;
-                            Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
+                            xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
+                            Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                             break;
                         case PASSWORD:
                             // TODO: initiate reconnection sequence
 
                             set_sw_irq(false);
                             mState = CONNECTING;
+                            xQueueOverwrite(iRTOS.qProgramState, &mState);
 
                             // TODO: keep Display up to date with reconnection phases
 
@@ -191,13 +208,21 @@ void SwitchHandler::button_event() {
                                         "] PW[" + mRelogStrings[PASSWORD] + "]\n");
                             vTaskDelay(pdMS_TO_TICKS(5000));
                             mRelogPhase = IP;
+                            xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
                             mState = STATUS;
-                            set_sw_irq(true);
-                            Logger::log("SWH: Reconnection attempt finished\n");
+                            xQueueOverwrite(iRTOS.qProgramState, &mState);
 
                             for (std::string &str: mRelogStrings) str.clear();
+                            xQueueOverwrite(iRTOS.qNetworkStrings[IP], mRelogStrings[IP].c_str());
+                            xQueueOverwrite(iRTOS.qNetworkStrings[USERNAME], mRelogStrings[USERNAME].c_str());
+                            xQueueOverwrite(iRTOS.qNetworkStrings[PASSWORD], mRelogStrings[PASSWORD].c_str());
+
+                            set_sw_irq(true);
+                            Logger::log("SWH: Reconnection attempt finished\n");
                             break;
                     }
+                    xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
+                    xSemaphoreGive(iRTOS.sUpdateDisplay);
                 }
                 break;
             case SW_ROT:
@@ -206,22 +231,25 @@ void SwitchHandler::button_event() {
                 // relog = remove last character from string corresponding to the phase
                 //  - If pending string is empty, move back to previous phase. If current phase is the first phase, ignore.
                 if (mState == STATUS) {
-                    mPendingCO2Target = mCurrCO2Target;
-                    Logger::log("SWH: CO2 reset: %hu\n", mCurrCO2Target);
+                    mCO2TargetPending = mCO2TargetCurr;
+                    xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
+                    Logger::log("SWH: CO2 reset: %hu\n", mCO2TargetCurr);
                 } else {
                     if (mRelogStrings[mRelogPhase].empty()) {
                         if (mRelogPhase != IP) {
                             mRelogPhase = mRelogPhase == USERNAME ? IP : USERNAME;
-                            Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
+                            xQueueOverwrite(iRTOS.qNetworkPhase, &mRelogPhase);
+                            Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                         }
                     } else {
                         mRelogStrings[mRelogPhase].pop_back();
+                        xQueueOverwrite(iRTOS.qNetworkStrings[mRelogPhase], mRelogStrings[mRelogPhase].c_str());
                         Logger::log("SWH: Writing: IP[" + mRelogStrings[IP] +
                                     "] UN[" + mRelogStrings[USERNAME] +
                                     "] PW[" + mRelogStrings[PASSWORD] + "]\n");
                         vTaskDelay(1);
-                        mPendingChar = INIT_CHAR;
-                        Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mPendingChar + "\n");
+                        mCharPending = INIT_CHAR;
+                        Logger::log("SWH: Writing:" + mRelogStrings[mRelogPhase] + "<" + mCharPending + "\n");
                     }
                 }
                 mPrevBackspace = time_us_64();
@@ -243,37 +271,37 @@ void SwitchHandler::button_event() {
 
 /// increment pending character with a modified lexicography
 bool SwitchHandler::inc_pending_char() {
-    if (isupper(mPendingChar)) {
-        mPendingChar = tolower(mPendingChar);
-    } else if (islower(mPendingChar) && mPendingChar != 'z') {
-        mPendingChar = toupper(mPendingChar) + 1;
+    if (isupper(mCharPending)) {
+        mCharPending = tolower(mCharPending);
+    } else if (islower(mCharPending) && mCharPending != 'z') {
+        mCharPending = toupper(mCharPending) + 1;
     } else
-        switch (mPendingChar) {
+        switch (mCharPending) {
             case '9':
-                mPendingChar = '.';
+                mCharPending = '.';
                 break;
             case '.':
-                mPendingChar = 'A';
+                mCharPending = 'A';
                 break;
             case 'z':
-                mPendingChar = '!';
+                mCharPending = '!';
                 break;
             case '-':
-                mPendingChar = '/';
+                mCharPending = '/';
                 break;
             case '/':
-                mPendingChar = ':';
+                mCharPending = ':';
                 break;
             case '@':
-                mPendingChar = '[';
+                mCharPending = '[';
                 break;
             case '`':
-                mPendingChar = '{';
+                mCharPending = '{';
                 break;
             case '~':
                 return false;
             default:
-                ++mPendingChar;
+                ++mCharPending;
                 break;
         }
     return true;
@@ -281,37 +309,37 @@ bool SwitchHandler::inc_pending_char() {
 
 /// decrement pending character with a modified lexicography
 bool SwitchHandler::dec_pending_char() {
-    if (islower(mPendingChar)) {
-        mPendingChar = toupper(mPendingChar);
-    } else if (isupper(mPendingChar) && mPendingChar != 'A') {
-        mPendingChar = tolower(mPendingChar) - 1;
+    if (islower(mCharPending)) {
+        mCharPending = toupper(mCharPending);
+    } else if (isupper(mCharPending) && mCharPending != 'A') {
+        mCharPending = tolower(mCharPending) - 1;
     } else
-        switch (mPendingChar) {
+        switch (mCharPending) {
             case '0':
                 return false;
             case '.':
-                mPendingChar = '9';
+                mCharPending = '9';
                 break;
             case 'A':
-                mPendingChar = '.';
+                mCharPending = '.';
                 break;
             case '!':
-                mPendingChar = 'z';
+                mCharPending = 'z';
                 break;
             case '/':
-                mPendingChar = '-';
+                mCharPending = '-';
                 break;
             case ':':
-                mPendingChar = '/';
+                mCharPending = '/';
                 break;
             case '[':
-                mPendingChar = '@';
+                mCharPending = '@';
                 break;
             case '{':
-                mPendingChar = '`';
+                mCharPending = '`';
                 break;
             default:
-                --mPendingChar;
+                --mCharPending;
                 break;
         }
     return true;
