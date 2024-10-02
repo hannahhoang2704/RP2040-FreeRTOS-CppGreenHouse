@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.12)
 
-# Set any variables required for importing libraries
-SET(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-KernelV10.6.2)
-
 # Set board type because we are building for PicoW
 set(PICO_BOARD pico_w)
+
+# Set any variables required for importing libraries
+SET(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-KernelV10.6.2)
 
 # Import those libraries
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
