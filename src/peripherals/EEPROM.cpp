@@ -12,14 +12,14 @@ mI2C(i2c_sp), mDevAddr(device_address) {
 
 void EEPROM::read_from_eeprom(uint16_t address, uint8_t *data, uint length){
     uint8_t buf[REG_ADDR_LEN];
-    buf[0] = static_cast<uint8_t>((address & 0xFF) >> BITS_PER_BYTE);
-    buf[1] = static_cast<uint8_t>(address & 0xFF);
+    buf[0] = static_cast<uint8_t>((address & 0xFF00) >> BITS_PER_BYTE);
+    buf[1] = static_cast<uint8_t>(address & 0x00FF);
     mI2C->transaction(mDevAddr, buf, REG_ADDR_LEN, data, length);
 }
 
 void EEPROM::write_to_eeprom(uint16_t address, const uint8_t *data, uint length){
-    mBuffer[0] = static_cast<uint8_t>((address >> BITS_PER_BYTE) & 0xFF);
-    mBuffer[1] = static_cast<uint8_t>(address & 0xFF);
+    mBuffer[0] = static_cast<uint8_t>((address & 0xFF00) >> BITS_PER_BYTE);
+    mBuffer[1] = static_cast<uint8_t>(address & 0x00FF);
     for (int i = 0; i < length; ++i) {
         mBuffer[i + REG_ADDR_LEN] = data[i];
     }
@@ -124,8 +124,8 @@ void EEPROM::put_log_entry(const char *str) {
     log_buf[string_length + 1] = (uint8_t)crc;         //check again the size length
 
     uint16_t write_address = (uint16_t) EEPROM::LOG_FIRST_ADDR + (index * (uint16_t) ENTRY_SIZE);
-    Logger::log("write address for next log is %lu \n", write_address);
-    if (write_address < ENTRY_SIZE * MAX_ENTRIES) {
+    if (write_address < EEPROM::LOG_FIRST_ADDR + (ENTRY_SIZE * MAX_ENTRIES)) {
+        Logger::log("write address for next log is %lu \n", write_address);
         write_to_eeprom(write_address, log_buf, ENTRY_SIZE);
         index += 1;
         put(LOG_INDEX_ADDR, index);
@@ -162,4 +162,9 @@ void EEPROM::erase_logs() {
     }
     index = 0;
     put(EEPROM::LOG_INDEX_ADDR, index);
+}
+
+void EEPROM::get_log_index_value(const uint16_t idx) {
+    index = idx;
+    Logger::log("index value is %u\n", index);
 }
