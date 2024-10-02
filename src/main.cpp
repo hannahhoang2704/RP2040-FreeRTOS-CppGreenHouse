@@ -49,7 +49,7 @@ int main() {
 
     /// interfaces
     auto CLI_UART = make_shared<PicoOsUart>(UART0_s.ctrl_nr, UART0_s.tx_pin, UART0_s.rx_pin, UART0_s.baud,UART0_s.stop_bits);
-    auto modbusUART = make_shared<PicoOsUart>(UART1_s.ctrl_nr,UART1_s.tx_pin, UART1_s.rx_pin,UART1_s.baud,UART1_s.stop_bits);
+    auto modbusUART = make_shared<PicoOsUart>(UART1_s.ctrl_nr, UART1_s.tx_pin, UART1_s.rx_pin,UART1_s.baud,UART1_s.stop_bits);
     auto OLED_SDP600_I2C = make_shared<PicoI2C>(I2C1_s.ctrl_nr, I2C1_s.baud);
     auto rtu_client = make_shared<ModbusClient>(modbusUART);
 
