@@ -22,9 +22,10 @@ uint32_t read_runtime_ctr(void) {
 #define BUFSIZE 2048
 #endif
 
- /* Add a command to Talkback queue with curl (a command line utility)
-  * curl -v -d "command_string=my%20fancy%20command&api_key=371DAWENQKI6J8DD" http://api.thingspeak.com/talkbacks/52920/commands
-  * */
+/* Add a command to Talkback queue with curl (a command line utility)
+* curl -v -d "command_string=my%20fancy%20command&api_key=371DAWENQKI6J8DD" http://api.thingspeak.com/talkbacks/52920/commands
+* */
+
 void test_task(void *param) {
     (void) param;
 #if 0
@@ -38,14 +39,15 @@ void test_task(void *param) {
                       "\r\n"
                       "api_key=371DAWENQKI6J8DD";
 #endif
-#if 1
+#if 0
      // Execute (= get and remove) next command from talkback queue - tested to work
     const char *req = "POST /talkbacks/52920/commands/execute.json HTTP/1.1\r\n"
                       "Host: api.thingspeak.com\r\n"
                       "Content-Length: 24\r\n"
                       "Content-Type: application/x-www-form-urlencoded\r\n"
                       "\r\n"
-                      "api_key=371DAWENQKI6J8DD";
+                      "api_key=FOVSF0EAYACJVP3S";
+                      //"api_key=371DAWENQKI6J8DD";
 #endif
 #if 0
     // Update fields using a POST request and execute (= get and remove) next command from talkback queue - tested to work
@@ -58,7 +60,7 @@ void test_task(void *param) {
                       "\r\n"
                       "field1=370&api_key=1WWH2NWXSM53URR5&talkback_key=371DAWENQKI6J8DD";
 #endif
-#if 0
+#if 1
     // Update fields using a GET request - tested to work
     const char *req = "GET /update?api_key=1WWH2NWXSM53URR5&field1=440&field2=44.7 HTTP/1.1\r\n"
                       "Host: api.thingspeak.com\r\n"
@@ -85,6 +87,7 @@ void test_task(void *param) {
     unsigned char *buffer = new unsigned char[BUFSIZE];
     // todo: Add failed connection handling
     //IPStack ipstack("SmartIotMQTT", "SmartIot"); // example
+    printf("SSID: [%s] PW: [%s]\n", WIFI_SSID, WIFI_PASSWORD);
     IPStack ipstack(WIFI_SSID, WIFI_PASSWORD); // Set env in CLion CMAKE setting
 
     const uint led_pin = 22;
