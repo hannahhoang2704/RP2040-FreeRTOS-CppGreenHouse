@@ -45,7 +45,7 @@ void SwitchHandler::task_switch_handler(void *params) {
 }
 
 void SwitchHandler::switch_handler() {
-    Logger::log("SWH: Initiated\n");
+    Logger::log("Initiated\n");
     Logger::log("Waiting for storage to upload CO2TargetCurrent...\n");
     if (xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent, pdMS_TO_TICKS(1000)) == pdFALSE) {
         Logger::log("WARNING: Storage didn't upload CO2TargetCurrent. Defaulting to %hu ppm\n", mCO2TargetCurrent);
@@ -54,12 +54,12 @@ void SwitchHandler::switch_handler() {
     }
 
     set_sw_irq(true);
-    Logger::log("SWH: IRQ enabled\n");
+    Logger::log("Switch IRQs enabled\n");
 
     while (true) {
         while (xQueueReceive(mIRQ_eventQueue,
                              static_cast<void *>(&mEventData),
-                             portMAX_DELAY) == pdTRUE) {
+                             mLostEvents > 0 ? 0 : portMAX_DELAY) == pdTRUE) {
             mDisplayNote = 0;
             if (mEventData.gpio == swRotor.mPinA || mEventData.gpio == swRotor.mPinB) {
                 rot_event();
@@ -91,20 +91,16 @@ void SwitchHandler::rot_event() {
                     mCO2TargetPending += CO2_INCREMENT;
                     xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
                     mDisplayNote |= bCO2_TARGET;
-
-                    Logger::log("SWH: Pending CO2 adjustment: +%hd => %hd\n", CO2_INCREMENT, mCO2TargetPending);
                 } else if (mEvent == ROT_COUNTER_CLOCKWISE && mCO2TargetPending > CO2_MIN) {
                     mCO2TargetPending -= CO2_INCREMENT;
                     xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
                     mDisplayNote |= bCO2_TARGET;
-                    Logger::log("SWH: Pending CO2 adjustment: -%hd => %hd\n", CO2_INCREMENT, mCO2TargetPending);
                 }
             } else {
                 if ((mEvent == ROT_CLOCKWISE && inc_pending_char()) ||
                     (mEvent == ROT_COUNTER_CLOCKWISE && dec_pending_char())) {
                     xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
                     mDisplayNote |= bCHANGE_CHAR;
-                    Logger::log("SWH: Writing:" + mNetworkStrings[mNetworkPhase] + "<" + mCharPending + "\n");
                 }
             }
         }
@@ -132,7 +128,8 @@ void SwitchHandler::button_event() {
                 backspace();
                 break;
             default:
-                Logger::log("ERROR: SwitchHandler: who dis gpio %u\n", mEventData.gpio);
+                Logger::log("ERROR: who dis gpio %u\n", mEventData.gpio);
+
         }
     }
 }
@@ -146,17 +143,9 @@ void SwitchHandler::state_toggle() {
         for (std::string &str: mNetworkStrings) str.clear();
         mNetworkPhase = NEW_IP;
         xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
-        Logger::log("SWH: State: Status\n");
-        vTaskDelay(1);
-        Logger::log("SWH: CO2 set: %hu\n", mCO2TargetCurrent);
+        Logger::log("[NETWORK => STATUS]\n");
     } else {
-        Logger::log("SWH: State: Relog\n");
-        vTaskDelay(1);
-        Logger::log("SWH: Writing: IP[" + mNetworkStrings[NEW_IP] +
-                    "] UN[" + mNetworkStrings[NEW_SSID] +
-                    "] PW[" + mNetworkStrings[NEW_PW] + "]\n");
-        vTaskDelay(1);
-        Logger::log("SWH: Writing:" + mNetworkStrings[mNetworkPhase] + "<" + mCharPending + "\n");
+        Logger::log("[STATUS => NETWORK]\n");
     }
     mDisplayNote |= bSTATE;
 }
@@ -171,16 +160,15 @@ void SwitchHandler::insert() {
             xQueueOverwrite(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent);
             xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
             mDisplayNote |= bCO2_TARGET;
-            Logger::log("SWH: CO2 set: %hu\n", mCO2TargetCurrent);
+            Logger::log("[STATUS] CO2 set: %hu\n", mCO2TargetCurrent);
         }
     } else {
         mNetworkStrings[mNetworkPhase] += mCharPending;
-        Logger::log("SWH: Writing: IP[" + mNetworkStrings[NEW_IP] +
-                    "] UN[" + mNetworkStrings[NEW_SSID] +
-                    "] PW[" + mNetworkStrings[NEW_PW] + "]\n");
-        vTaskDelay(1);
+        Logger::log("[NETWORK] IP[%s] UN[%s] PW[%s]\n",
+                    mNetworkStrings[NEW_IP].c_str(),
+                    mNetworkStrings[NEW_SSID].c_str(),
+                    mNetworkStrings[NEW_PW].c_str());
         mCharPending = INIT_CHAR;
-        Logger::log("SWH: Writing:" + mNetworkStrings[mNetworkPhase] + "<" + mCharPending + "\n");
         mDisplayNote |= bINSERT_CHAR;
     }
 }
@@ -191,22 +179,21 @@ void SwitchHandler::next_phase() {
     if (mState == NETWORK) {
         switch (mNetworkPhase) {
             case NEW_IP:
-                Logger::log("SWH: Writing: IP[" + mNetworkStrings[NEW_IP] +
-                            "] UN[" + mNetworkStrings[NEW_SSID] +
-                            "] PW[" + mNetworkStrings[NEW_PW] + "]\n");
+                Logger::log("[NETWORK] IP[%s] UN[%s] PW[%s]\n",
+                            mNetworkStrings[NEW_IP].c_str(),
+                            mNetworkStrings[NEW_SSID].c_str(),
+                            mNetworkStrings[NEW_PW].c_str());
                 vTaskDelay(1);
                 mNetworkPhase = NEW_SSID;
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
-                Logger::log("SWH: Writing:" + mNetworkStrings[mNetworkPhase] + "<" + mCharPending + "\n");
                 break;
             case NEW_SSID:
-                Logger::log("SWH: Writing: IP[" + mNetworkStrings[NEW_IP] +
-                            "] UN[" + mNetworkStrings[NEW_SSID] +
-                            "] PW[" + mNetworkStrings[NEW_PW] + "]\n");
-                vTaskDelay(1);
+                Logger::log("[NETWORK] IP[%s] UN[%s] PW[%s]\n",
+                            mNetworkStrings[NEW_IP].c_str(),
+                            mNetworkStrings[NEW_SSID].c_str(),
+                            mNetworkStrings[NEW_PW].c_str());
                 mNetworkPhase = NEW_PW;
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
-                Logger::log("SWH: Writing:" + mNetworkStrings[mNetworkPhase] + "<" + mCharPending + "\n");
                 break;
             case NEW_PW:
                 // TODO: order reconnection
@@ -233,25 +220,23 @@ void SwitchHandler::backspace() {
         mCO2TargetPending = mCO2TargetCurrent;
         xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
         mDisplayNote |= bCO2_TARGET;
-        Logger::log("SWH: CO2 reset: %hu\n", mCO2TargetCurrent);
+        Logger::log("[STATUS] CO2 reset: %hu\n", mCO2TargetCurrent);
     } else {
         if (mNetworkStrings[mNetworkPhase].empty()) {
             if (mNetworkPhase != NEW_IP) {
                 mNetworkPhase = mNetworkPhase == NEW_SSID ? NEW_IP : NEW_SSID;
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
                 mDisplayNote |= bNETWORK_PHASE;
-                Logger::log("SWH: Writing:" + mNetworkStrings[mNetworkPhase] + "<" + mCharPending + "\n");
             }
         } else {
             mNetworkStrings[mNetworkPhase].pop_back();
-            Logger::log("SWH: Writing: IP[" + mNetworkStrings[NEW_IP] +
-                        "] UN[" + mNetworkStrings[NEW_SSID] +
-                        "] PW[" + mNetworkStrings[NEW_PW] + "]\n");
+            Logger::log("[NETWORK] IP[%s] UN[%s] PW[%s]\n",
+                        mNetworkStrings[NEW_IP].c_str(),
+                        mNetworkStrings[NEW_SSID].c_str(),
+                        mNetworkStrings[NEW_PW].c_str());
             vTaskDelay(1);
             mCharPending = INIT_CHAR;
             mDisplayNote |= bBACKSPACE;
-
-            Logger::log("SWH: Writing:" + mNetworkStrings[mNetworkPhase] + "<" + mCharPending + "\n");
         }
     }
     mPrevBackspace = time_us_64();

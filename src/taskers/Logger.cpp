@@ -49,7 +49,9 @@ void Logger::log(const char *format, ...) {
     debugEvent event = {.timestamp = timestamp, .taskName = taskName};
     strncpy(event.message, buf, sizeof(event.message) - 1);
     event.message[sizeof(event.message) - 1] = '\0';
-    xQueueSendToBack(mSyslog_queue, &event, 0);
+    if (xQueueSendToBack(mSyslog_queue, &event, 0) == errQUEUE_FULL) {
+        ++Logger::mLost_Log_event;
+    }
 }
 
 
@@ -58,21 +60,21 @@ void Logger::log(const std::string& string) {
     debugEvent dbgE{.timestamp = time_us_64() / 1000000, .taskName = get_task_name()};
     strncpy(dbgE.message, buf, sizeof(dbgE.message) - 1);
     dbgE.message[sizeof(dbgE.message) - 1] = '\0';
-    if(xQueueSendToBack(mSyslog_queue, &dbgE, 0) == errQUEUE_FULL){
+    if (xQueueSendToBack(mSyslog_queue, &dbgE, 0) == errQUEUE_FULL){
         ++Logger::mLost_Log_event;
     };
 }
 
 void Logger::run() {
     while (true) {
-        while (xQueueReceive(mSyslog_queue, &mDebugEvent, portMAX_DELAY) == pdTRUE) {
+        while (xQueueReceive(mSyslog_queue, &mDebugEvent, mLost_Log_event > 0 ? 0 : portMAX_DELAY) == pdTRUE) {
             offset = snprintf(buffer, sizeof(buffer), "[%llu s] [%s] ", mDebugEvent.timestamp, mDebugEvent.taskName);
             strncat(buffer, mDebugEvent.message, sizeof(buffer) - offset);
             mCLI_UART->send(buffer);
         }
         if (mLost_Log_event > 0) {
-            mCLI_UART->send("Lost log event\n");
-            mLost_Log_event = 0;
+            Logger::log("errQUEUE_FULL: Lost %u logs\n", mLost_Log_event);
+            Logger::mLost_Log_event = 0;
         }
     }
 }

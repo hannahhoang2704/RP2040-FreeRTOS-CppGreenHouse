@@ -36,7 +36,7 @@ void Display::task_display(void *params) {
 }
 
 void Display::display() {
-    Logger::log("Initiated DISPLAY task.\n");
+    Logger::log("Initiated\n");
     mSSD1306.init();
 
     print_status_base();
