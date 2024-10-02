@@ -10,6 +10,7 @@
 #include "RTOS_infrastructure.h"
 #include "EEPROM.h"
 #include "Storage.h"
+#include "ThingSpeaker.h"
 
 extern "C" {
 uint32_t read_runtime_ctr(void) {
@@ -107,6 +108,7 @@ int main() {
     new Logger(CLI_UART);
     new Storage(EEPROM_I2C, iRTOS);
     new SwitchHandler(iRTOS);
+    new ThingSpeaker();
 
     Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();
