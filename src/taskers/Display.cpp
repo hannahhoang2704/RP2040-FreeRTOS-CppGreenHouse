@@ -35,10 +35,6 @@ void Display::task_display(void *params) {
     object_ptr->display();
 }
 
-TaskHandle_t Display::get_handle() const {
-    return mTaskHandle;
-}
-
 void Display::display() {
     Logger::log("Initiated DISPLAY task.\n");
     mSSD1306.init();

@@ -39,11 +39,18 @@ private:
     void switch_handler();
     static void task_switch_handler(void *params);
 
-    void set_sw_irq(bool state) const;
     void rot_event();
     void button_event();
+
+    void state_toggle();
+    void insert();
+    void next_phase();
+    void backspace();
+
     bool inc_pending_char();
     bool dec_pending_char();
+
+    void set_sw_irq(bool state) const;
 
     TaskHandle_t mTaskHandle{nullptr};
     static QueueHandle_t mIRQ_eventQueue;
@@ -53,11 +60,11 @@ private:
             .timeStamp = 0
     };
 
-    SW::Button mToggleState;
-    SW::Button mInsert;
-    SW::Button mNext;
-    SW::Button mBackspace;
-    SW::Rotor mRotor;
+    SW::Button sw2;
+    SW::Button sw1;
+    SW::Button sw0;
+    SW::Button swRotPress;
+    SW::Rotor swRotor;
 
     /// sw event handling data
     enum swEvent {
@@ -87,7 +94,7 @@ private:
 
     program_state mState{STATUS};
     int16_t mCO2TargetCurrent{0};
-    int16_t mCO2TargetPending{0};
+    int16_t mCO2TargetPending{mCO2TargetCurrent};
     char mCharPending{INIT_CHAR};
     network_phase mNetworkPhase{NEW_IP};
     std::vector<std::string> mNetworkStrings{"", "", ""};

@@ -16,8 +16,6 @@ public:
     Display(const std::shared_ptr<PicoI2C> &i2c_sp,
             RTOS_infrastructure RTOSi);
 
-    TaskHandle_t get_handle() const;
-
     static void notify(eNotifyAction eAction, uint32_t note);
 
 private:
