@@ -27,7 +27,7 @@ SwitchHandler::SwitchHandler(RTOS_infrastructure RTOSi) :
         mBackspace(SW_ROT, irq_handler),
         mRotor(ROT_A, ROT_B, irq_handler),
         iRTOS(RTOSi) {
-    if (xTaskCreate(task_state_handler,
+    if (xTaskCreate(task_switch_handler,
                     "SW_HANDLER",
                     512,
                     (void *) this,
@@ -39,21 +39,27 @@ SwitchHandler::SwitchHandler(RTOS_infrastructure RTOSi) :
     }
 }
 
-void SwitchHandler::task_state_handler(void *params) {
+void SwitchHandler::task_switch_handler(void *params) {
     auto object_ptr = static_cast<SwitchHandler *>(params);
-    object_ptr->state_handler();
+    object_ptr->switch_handler();
 }
 
-void SwitchHandler::state_handler() {
+void SwitchHandler::switch_handler() {
     Logger::log("SWH: Initiated\n");
     // TODO: order connector task to (try and) establish connection to ThingSpeak
     Logger::log("SWH: Waiting for ThingSpeak connection...\n");
     //vTaskDelay(pdMS_TO_TICKS(5000));
     mState = STATUS;
 
+    //xQueueOverwrite(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent);
+    // simulating EEPROM's work --- TODO: delete ^this^ after EEPROM implementation
+
+    //mCO2TargetPending = mCO2TargetCurrent;
+    //xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
+    //Display::notify(eSetBits, bCO2_TARGET);
     // TODO: request CO2 target from EEPROM
-    mCO2TargetCurr = 0;
-    mCO2TargetPending = mCO2TargetCurr;
+    mCO2TargetCurrent = 0;
+    mCO2TargetPending = mCO2TargetCurrent;
 
     // TODO: order Display to update OLED
 
@@ -125,7 +131,7 @@ void SwitchHandler::button_event() {
         switch (mEventData.gpio) {
             case SW_2:
                 /// change system state -- status or relog
-                // changing system state resets any pending user input
+                // changing system state resets pending string input
                 mState = mState == STATUS ? NETWORK : STATUS;
                 if (mState == STATUS) {
                     mCharPending = INIT_CHAR;
@@ -134,10 +140,8 @@ void SwitchHandler::button_event() {
                     xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
                     Logger::log("SWH: State: Status\n");
                     vTaskDelay(1);
-                    Logger::log("SWH: CO2 set: %hu\n", mCO2TargetCurr);
+                    Logger::log("SWH: CO2 set: %hu\n", mCO2TargetCurrent);
                 } else {
-                    mCO2TargetPending = mCO2TargetCurr;
-                    xQueueOverwrite(iRTOS.qCO2TargetPending, &mNetworkPhase);
                     Logger::log("SWH: State: Relog\n");
                     vTaskDelay(1);
                     Logger::log("SWH: Writing: IP[" + mNetworkStrings[NEW_IP] +
@@ -153,12 +157,12 @@ void SwitchHandler::button_event() {
                 // status = CO2 target
                 // relog = character to string
                 if (mState == STATUS) {
-                    if (mCO2TargetCurr != mCO2TargetPending) {
-                        mCO2TargetCurr = mCO2TargetPending;
-                        xQueueOverwrite(iRTOS.qCO2TargetCurr, &mCO2TargetCurr);
+                    if (mCO2TargetCurrent != mCO2TargetPending) {
+                        mCO2TargetCurrent = mCO2TargetPending;
+                        xQueueOverwrite(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent);
                         xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
                         mDisplayNote |= bCO2_TARGET;
-                        Logger::log("SWH: CO2 set: %hu\n", mCO2TargetCurr);
+                        Logger::log("SWH: CO2 set: %hu\n", mCO2TargetCurrent);
                     }
                 } else {
                     mNetworkStrings[mNetworkPhase] += mCharPending;
@@ -168,7 +172,6 @@ void SwitchHandler::button_event() {
                     vTaskDelay(1);
                     mCharPending = INIT_CHAR;
                     Logger::log("SWH: Writing:" + mNetworkStrings[mNetworkPhase] + "<" + mCharPending + "\n");
-                    xTaskNotify(iRTOS.tDisplay, bINSERT_CHAR, eSetBits);
                     mDisplayNote |= bINSERT_CHAR;
                 }
                 break;
@@ -216,10 +219,10 @@ void SwitchHandler::button_event() {
                 // relog = remove last character from string corresponding to the phase
                 //  - If pending string is empty, move back to previous phase. If current phase is the first phase, ignore.
                 if (mState == STATUS) {
-                    mCO2TargetPending = mCO2TargetCurr;
+                    mCO2TargetPending = mCO2TargetCurrent;
                     xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
                     mDisplayNote |= bCO2_TARGET;
-                    Logger::log("SWH: CO2 reset: %hu\n", mCO2TargetCurr);
+                    Logger::log("SWH: CO2 reset: %hu\n", mCO2TargetCurrent);
                 } else {
                     if (mNetworkStrings[mNetworkPhase].empty()) {
                         if (mNetworkPhase != NEW_IP) {

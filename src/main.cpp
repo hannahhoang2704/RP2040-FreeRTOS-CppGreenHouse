@@ -63,13 +63,17 @@ int main() {
             //.qState = xQueueCreate(1, sizeof(program_state)),
             .qNetworkPhase = xQueueCreate(1, sizeof(network_phase)),
             .qCO2TargetPending = xQueueCreate(1, sizeof(int16_t)),
-            .qCO2TargetCurr = xQueueCreate(1, sizeof(char)),
-            .qCharPending = xQueueCreate(1, sizeof(int16_t)),
+            .qCO2TargetCurrent = xQueueCreate(1, sizeof(int16_t)),
+            .qCO2Measurement = xQueueCreate(1, sizeof(float)),
+            .qPressure = xQueueCreate(1, sizeof(float)),
+            .qFan = xQueueCreate(1, sizeof(int16_t)),
+            .qHumidity = xQueueCreate(1, sizeof(float)),
+            .qTemperature = xQueueCreate(1, sizeof(float)),
+            .qCharPending = xQueueCreate(1, sizeof(int16_t))
     };
 
     /// taskers
-    auto display = Display(OLED_SDP600_I2C, iRTOS);
-    iRTOS.tDisplay = display.get_handle();
+    new Display(OLED_SDP600_I2C, iRTOS);
     new Greenhouse(rtu_client, OLED_SDP600_I2C);
     new Logger(CLI_UART);
     new SwitchHandler(iRTOS);

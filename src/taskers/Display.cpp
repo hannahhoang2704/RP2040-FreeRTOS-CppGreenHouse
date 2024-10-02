@@ -42,6 +42,7 @@ TaskHandle_t Display::get_handle() const {
 void Display::display() {
     Logger::log("Initiated DISPLAY task.\n");
     mSSD1306.init();
+
     print_status_base();
     reprint_CO2_target();
     reprint_CO2_measurement();
@@ -64,7 +65,7 @@ void Display::update() {
     if (mNotification & bSTATE) {
         mState = mState == STATUS ? NETWORK : STATUS;
         if (mState == STATUS) {
-            mCO2TargetPending = mCO2TargetCurr;
+            mCO2TargetPending = mCO2TargetCurrent;
         } else {
             for (std::string &str: mNetworkStrings) str.clear();
             mNetworkPhase = NEW_IP;
@@ -98,87 +99,105 @@ void Display::print_status_base() {
 }
 
 void Display::reprint_CO2_target() {
+    ssValue.str("");
+    bool pendingQempty = xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE;
+    bool currentQempty = xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent, 0) == pdFALSE;
     if (mNotification & bCO2_TARGET) {
-        if (xQueuePeek(iRTOS.qCO2TargetCurr, &mCO2TargetCurr, 0) == pdFALSE) {
-            Logger::log("ERROR: qCO2TargetCurr empty\n");
-        }
-        if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE) {
+        if (pendingQempty) {
             Logger::log("WARNING: qCO2TargetPending empty\n");
         }
+        if (currentQempty) {
+            Logger::log("WARNING: qCO2TargetCurr empty\n");
+        }
     }
-    bool pending = mCO2TargetPending != mCO2TargetCurr;
-    ssValue.str("");
-    ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetPending;
-    ssValue << "   ppm";
-
-    if (pending)
-        mSSD1306.rect(STATUS_VALUE_X - CHAR_WIDTH, STATUS_CO2T_Y - 1,
-                      OLED_WIDTH - STATUS_VALUE_X + CHAR_WIDTH, 9, pending, true);
-    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_CO2T_Y, !pending);
+    bool pending = mCO2TargetPending != mCO2TargetCurrent;
+    if (currentQempty) {
+        if (pendingQempty || !pending) {
+            ssValue << setw(STATUS_VALUE_W) << "   N/A ppm";
+        } else {
+            ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetPending << "   ppm";
+        }
+    } else {
+        if (pendingQempty) {
+            ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetCurrent << "   ppm";
+        } else {
+            ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetPending << "   ppm";
+        }
+    }
+    if (!pendingQempty) {
+        if (pending)
+            mSSD1306.rect(STATUS_VALUE_X - CHAR_WIDTH, STATUS_CO2T_Y - 1,
+                          OLED_WIDTH - STATUS_VALUE_X + CHAR_WIDTH, 9, pending, true);
+    }
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_CO2T_Y, pendingQempty || !pending);
 }
 
 void Display::reprint_CO2_measurement() {
-    if (mNotification & bCO2_MEASURE) {
-        // copy-pasted -- change details
-        //if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE) {
-        //    Logger::log("ERROR: qCO2TargetPending and qCO2TargetCurr empty\n");
-        //}
-    }
     ssValue.str("");
-    ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mCO2Measurement;
+    if (xQueuePeek(iRTOS.qCO2Measurement, &mCO2Measurement, 0) == pdFALSE) {
+        if (mNotification & bCO2_MEASURE) {
+            Logger::log("WARNING: qCO2Measurement empty\n");
+        }
+        ssValue << setw(STATUS_VALUE_W) << "N/A";
+    } else {
+        ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mCO2Measurement;
+    }
     ssValue << " ppm";
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_CO2M_Y, 1);
 }
 
 void Display::reprint_pressure() {
-    if (mNotification & bPRESSURE) {
-        // copy-pasted -- change details
-        //if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE) {
-        //    Logger::log("ERROR: qCO2TargetPending and qCO2TargetCurr empty\n");
-        //}
-    }
     ssValue.str("");
-    ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mPressure;
+    if (xQueuePeek(iRTOS.qPressure, &mPressure, 0) == pdFALSE) {
+        if (mNotification & bPRESSURE) {
+            Logger::log("WARNING: qPressure empty\n");
+        }
+        ssValue << setw(STATUS_VALUE_W) << "N/A";
+    } else {
+        ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mPressure;
+    }
     ssValue << " ppm";
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_PRES_Y, 1);
 }
 
 void Display::reprint_fan() {
-    if (mNotification & bFAN) {
-        // copy-pasted -- change details
-        //if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE) {
-        //    Logger::log("ERROR: qCO2TargetPending and qCO2TargetCurr empty\n");
-        //}
-    }
     ssValue.str("");
-    ssValue << setw(STATUS_VALUE_W - 2) << mFan / 10 << "." << mFan % 10;
+    if (xQueuePeek(iRTOS.qFan, &mFan, 0) == pdFALSE) {
+        if (mNotification & bFAN) {
+            Logger::log("WARNING: qFan empty\n");
+        }
+        ssValue << setw(STATUS_VALUE_W) << "N/A";
+    } else {
+        ssValue << setw(STATUS_VALUE_W - 2) << mFan / 10 << "." << mFan % 10;
+    }
     ssValue << " %";
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_FAN_Y, 1);
 }
 
 void Display::reprint_hum() {
-    if (mNotification & bHUMIDITY) {
-        // copy-pasted -- change details
-        //if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE) {
-        //    Logger::log("ERROR: qCO2TargetPending and qCO2TargetCurr empty\n");
-        //}
-    }
     ssValue.str("");
-    ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mRelHum;
+    if (xQueuePeek(iRTOS.qHumidity, &mHumidity, 0) == pdFALSE) {
+        if (mNotification & bHUMIDITY) {
+            Logger::log("WARNING: qHumidity empty\n");
+        }
+        ssValue << setw(STATUS_VALUE_W) << "N/A";
+    } else {
+        ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mHumidity;
+    }
     ssValue << " %";
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_HUM_Y, 1);
 }
 
 void Display::reprint_temp() {
-    if (mNotification & bHUMIDITY) {
-        // copy-pasted -- change details
-        //if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE &&
-        //    xQueuePeek(iRTOS.qCO2TargetCurr, &mCO2TargetCurr, 0) == pdFALSE) {
-        //    Logger::log("ERROR: qCO2TargetPending and qCO2TargetCurr empty\n");
-        //}
-    }
     ssValue.str("");
-    ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mTemp;
+    if (xQueuePeek(iRTOS.qTemperature, &mTemperature, 0) == pdFALSE) {
+        if (mNotification & bHUMIDITY) {
+            Logger::log("WARNING: qTemperature empty\n");
+        }
+        ssValue << setw(STATUS_VALUE_W) << "N/A";
+    } else {
+        ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mTemperature;
+    }
     ssValue << " C";
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_TEMP_Y, 1);
 }

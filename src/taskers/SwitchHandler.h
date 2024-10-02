@@ -36,8 +36,8 @@ public:
     static uint32_t mLostEvents;
 
 private:
-    void state_handler();
-    static void task_state_handler(void *params);
+    void switch_handler();
+    static void task_switch_handler(void *params);
 
     void set_sw_irq(bool state) const;
     void rot_event();
@@ -86,7 +86,7 @@ private:
     static const int16_t CO2_MIN{0};
 
     program_state mState{STATUS};
-    int16_t mCO2TargetCurr{0};
+    int16_t mCO2TargetCurrent{0};
     int16_t mCO2TargetPending{0};
     char mCharPending{INIT_CHAR};
     network_phase mNetworkPhase{NEW_IP};

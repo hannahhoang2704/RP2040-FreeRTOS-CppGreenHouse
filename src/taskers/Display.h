@@ -72,13 +72,13 @@ private:
     /// program state data
     uint32_t mNotification;
     program_state mState{STATUS};
-    int16_t mCO2TargetCurr{0};
+    int16_t mCO2TargetCurrent{0};
     int16_t mCO2TargetPending{0};
     float mCO2Measurement{0};
-    float mPressure{2000};
+    float mPressure{0};
     int16_t mFan{0};
-    float mRelHum{0};
-    float mTemp{0};
+    float mHumidity{0};
+    float mTemperature{0};
     char mCharPending{};
     network_phase mNetworkPhase{NEW_IP};
     std::vector<std::string> mNetworkStrings{"", "", ""};

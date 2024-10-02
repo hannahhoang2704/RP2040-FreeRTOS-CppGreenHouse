@@ -41,10 +41,13 @@ struct RTOS_infrastructure {
     //QueueHandle_t qState{nullptr};
     QueueHandle_t qNetworkPhase{nullptr};
     QueueHandle_t qCO2TargetPending{nullptr};
-    QueueHandle_t qCO2TargetCurr{nullptr};
+    QueueHandle_t qCO2TargetCurrent{nullptr};
+    QueueHandle_t qCO2Measurement{nullptr};
+    QueueHandle_t qPressure{nullptr};
+    QueueHandle_t qFan{nullptr};
+    QueueHandle_t qHumidity{nullptr};
+    QueueHandle_t qTemperature{nullptr};
     QueueHandle_t qCharPending{nullptr};
-
-    TaskHandle_t tDisplay{nullptr};
 };
 
 #endif //FREERTOS_GREENHOUSE_RTOS_INFRASTRUCTURE_H
