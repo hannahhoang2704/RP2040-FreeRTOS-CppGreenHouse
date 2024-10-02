@@ -4,6 +4,16 @@
 
 using namespace std;
 
+TaskHandle_t Display::mTaskHandle{nullptr};
+uint64_t Display::mPrevNotification{0};
+
+void Display::notify(eNotifyAction eAction, uint32_t note) {
+    if (time_us_64() - mPrevNotification > TASK_NOTIFICATION_RATE_LIMIT_US) {
+        mPrevNotification = time_us_64();
+        xTaskNotify(mTaskHandle, note, eAction);
+    }
+}
+
 Display::Display(const shared_ptr<PicoI2C> &i2c_sp,
                  RTOS_infrastructure RTOSi) :
         mSSD1306(i2c_sp),
@@ -56,8 +66,8 @@ void Display::update() {
         if (mState == STATUS) {
             mCO2TargetPending = mCO2TargetCurr;
         } else {
-            for (std::string &str: mRelogStrings) str.clear();
-            mRelogPhase = NEW_IP;
+            for (std::string &str: mNetworkStrings) str.clear();
+            mNetworkPhase = NEW_IP;
         }
     }
 
@@ -70,8 +80,8 @@ void Display::update() {
         reprint_hum();
         reprint_temp();
     } else {
-        print_network_base();
         reprint_network_pending_char();
+        print_network_base();
         reprint_network_input();
     }
 }
@@ -88,21 +98,32 @@ void Display::print_status_base() {
 }
 
 void Display::reprint_CO2_target() {
-    //mSSD1306.rect(STATUS_VALUE_X, STATUS_CO2T_Y - 1, OLED_WIDTH - STATUS_VALUE_X, CHAR_HEIGHT + 1, 0, true);
-    xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0);
-    xQueuePeek(iRTOS.qCO2TargetCurr, &mCO2TargetCurr, 0);
+    if (mNotification & bCO2_TARGET) {
+        if (xQueuePeek(iRTOS.qCO2TargetCurr, &mCO2TargetCurr, 0) == pdFALSE) {
+            Logger::log("ERROR: qCO2TargetCurr empty\n");
+        }
+        if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE) {
+            Logger::log("WARNING: qCO2TargetPending empty\n");
+        }
+    }
     bool pending = mCO2TargetPending != mCO2TargetCurr;
     ssValue.str("");
     ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetPending;
     ssValue << "   ppm";
 
-    if (pending) mSSD1306.rect(STATUS_VALUE_X - CHAR_WIDTH, STATUS_CO2T_Y - 1,
-                               OLED_WIDTH - STATUS_VALUE_X + CHAR_WIDTH, 9, pending, true);
+    if (pending)
+        mSSD1306.rect(STATUS_VALUE_X - CHAR_WIDTH, STATUS_CO2T_Y - 1,
+                      OLED_WIDTH - STATUS_VALUE_X + CHAR_WIDTH, 9, pending, true);
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_CO2T_Y, !pending);
 }
 
 void Display::reprint_CO2_measurement() {
-    //xQueuePeek(iRTOS.qCO2Meausure, mCO2Measurement, 0);
+    if (mNotification & bCO2_MEASURE) {
+        // copy-pasted -- change details
+        //if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE) {
+        //    Logger::log("ERROR: qCO2TargetPending and qCO2TargetCurr empty\n");
+        //}
+    }
     ssValue.str("");
     ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mCO2Measurement;
     ssValue << " ppm";
@@ -110,7 +131,12 @@ void Display::reprint_CO2_measurement() {
 }
 
 void Display::reprint_pressure() {
-    //xQueuePeek(iRTOS.qPressure, mCO2Measurement, 0);
+    if (mNotification & bPRESSURE) {
+        // copy-pasted -- change details
+        //if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE) {
+        //    Logger::log("ERROR: qCO2TargetPending and qCO2TargetCurr empty\n");
+        //}
+    }
     ssValue.str("");
     ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mPressure;
     ssValue << " ppm";
@@ -118,8 +144,12 @@ void Display::reprint_pressure() {
 }
 
 void Display::reprint_fan() {
-    //xQueuePeek(iRTOS.qFan, mCO2Measurement, 0);
-
+    if (mNotification & bFAN) {
+        // copy-pasted -- change details
+        //if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE) {
+        //    Logger::log("ERROR: qCO2TargetPending and qCO2TargetCurr empty\n");
+        //}
+    }
     ssValue.str("");
     ssValue << setw(STATUS_VALUE_W - 2) << mFan / 10 << "." << mFan % 10;
     ssValue << " %";
@@ -127,7 +157,12 @@ void Display::reprint_fan() {
 }
 
 void Display::reprint_hum() {
-    //xQueuePeek(iRTOS.qHumidity, mCO2Measurement, 0);
+    if (mNotification & bHUMIDITY) {
+        // copy-pasted -- change details
+        //if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE) {
+        //    Logger::log("ERROR: qCO2TargetPending and qCO2TargetCurr empty\n");
+        //}
+    }
     ssValue.str("");
     ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mRelHum;
     ssValue << " %";
@@ -135,7 +170,13 @@ void Display::reprint_hum() {
 }
 
 void Display::reprint_temp() {
-    //xQueuePeek(iRTOS.qTemperature, mCO2Measurement, 0);
+    if (mNotification & bHUMIDITY) {
+        // copy-pasted -- change details
+        //if (xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE &&
+        //    xQueuePeek(iRTOS.qCO2TargetCurr, &mCO2TargetCurr, 0) == pdFALSE) {
+        //    Logger::log("ERROR: qCO2TargetPending and qCO2TargetCurr empty\n");
+        //}
+    }
     ssValue.str("");
     ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mTemp;
     ssValue << " C";
@@ -145,7 +186,25 @@ void Display::reprint_temp() {
 /// NETWORK Screen
 
 void Display::print_network_base() {
-    switch (mRelogPhase) {
+    if (mNotification & bNETWORK_PHASE) {
+        network_phase prevPhase = mNetworkPhase;
+        if (mNotification & bNETWORK_PHASE && xQueuePeek(iRTOS.qNetworkPhase, &mNetworkPhase, 0) == pdFALSE) {
+            Logger::log("ERROR: qNetworkPhase empty\n");
+        } else {
+            if (prevPhase == NEW_PW && mNetworkPhase == NEW_IP) {
+                for (std::string &str: mNetworkStrings) str.clear();
+                print_status_base();
+                reprint_CO2_target();
+                reprint_CO2_measurement();
+                reprint_pressure();
+                reprint_fan();
+                reprint_hum();
+                reprint_temp();
+                return;
+            }
+        }
+    }
+    switch (mNetworkPhase) {
         case NEW_PW:
             mSSD1306.text("WiFi PW:", 0, NETWORK_DESC_PW_Y);
         case NEW_SSID:
@@ -155,44 +214,37 @@ void Display::print_network_base() {
     }
 }
 
-void Display::reprint_network_input() {
-
-    bool tooLong;
-    std::string cut_str;
-
-    switch (mRelogPhase) {
-        case NEW_PW:
-            tooLong = mRelogStrings[NEW_PW].length() >= MAX_OLED_STR_WIDTH;
-            if (tooLong) {
-                cut_str = mRelogStrings[mRelogPhase];
-                cut_str.erase(0, cut_str.length() - (MAX_OLED_STR_WIDTH - 1));
-            }
-            mSSD1306.text(tooLong ? cut_str : mRelogStrings[NEW_PW], 0, NETWORK_INPUT_PW_Y);
-        case NEW_SSID:
-            tooLong = mRelogStrings[NEW_SSID].length() >= MAX_OLED_STR_WIDTH;
-            if (tooLong) {
-                cut_str = mRelogStrings[mRelogPhase];
-                cut_str.erase(0, cut_str.length() - (MAX_OLED_STR_WIDTH - 1));
-            }
-            mSSD1306.text(tooLong ? cut_str : mRelogStrings[NEW_SSID], 0, NETWORK_INPUT_SSID_Y);
-        case NEW_IP:
-            tooLong = mRelogStrings[NEW_IP].length() >= MAX_OLED_STR_WIDTH;
-            if (tooLong) {
-                cut_str = mRelogStrings[mRelogPhase];
-                cut_str.erase(0, cut_str.length() - (MAX_OLED_STR_WIDTH - 1));
-            }
-            mSSD1306.text(tooLong ? cut_str : mRelogStrings[NEW_IP], 0, NETWORK_INPUT_IP_Y);
-    }
-}
-
 void Display::reprint_network_pending_char() {
+    if (mNotification & (bCHANGE_CHAR | bINSERT_CHAR) && xQueuePeek(iRTOS.qCharPending, &mCharPending, 0) == pdFALSE) {
+        Logger::log("ERROR: qCharPending empty\n");
+    } else {
+        if (mNotification & bINSERT_CHAR) {
+            mNetworkStrings[mNetworkPhase] += mCharPending;
+            mCharPending = INIT_CHAR;
+        } else if (mNotification & bBACKSPACE) {
+            if (mNetworkStrings[mNetworkPhase].empty()) {
+                switch (mNetworkPhase) {
+                    case NEW_IP:
+                        break;
+                    case NEW_SSID:
+                        mNetworkPhase = NEW_IP;
+                        break;
+                    case NEW_PW:
+                        mNetworkPhase = NEW_PW;
+                        break;
+                }
+            } else {
+                mNetworkStrings[mNetworkPhase].pop_back();
+            }
+            mCharPending = INIT_CHAR;
+        }
+    }
 
-    size_t str_len = mRelogStrings[mRelogPhase].length();
+    size_t str_len = mNetworkStrings[mNetworkPhase].length();
     bool tooLong = str_len > MAX_OLED_STR_WIDTH - 1;
 
-    switch (mRelogPhase) {
+    switch (mNetworkPhase) {
         case NEW_IP:
-            mSSD1306.rect(0, NETWORK_INPUT_IP_Y - 1, OLED_WIDTH, CHAR_HEIGHT + 2, 0, true);
             mSSD1306.rect(tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
                           NETWORK_INPUT_IP_Y - 1, CHAR_WIDTH, CHAR_HEIGHT + 2, 1, true);
             mSSD1306.text(&mCharPending,
@@ -200,7 +252,6 @@ void Display::reprint_network_pending_char() {
                           NETWORK_INPUT_IP_Y, 0);
             break;
         case NEW_SSID:
-            mSSD1306.rect(0, NETWORK_INPUT_SSID_Y - 1, OLED_WIDTH, CHAR_HEIGHT + 2, 0, true);
             mSSD1306.rect(tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
                           NETWORK_INPUT_SSID_Y - 1, CHAR_WIDTH, CHAR_HEIGHT + 2, 1, true);
             mSSD1306.text(&mCharPending,
@@ -208,12 +259,41 @@ void Display::reprint_network_pending_char() {
                           NETWORK_INPUT_SSID_Y, 0);
             break;
         case NEW_PW:
-            mSSD1306.rect(0, NETWORK_INPUT_PW_Y - 1, OLED_WIDTH, CHAR_HEIGHT + 2, 0, true);
             mSSD1306.rect(tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
                           NETWORK_INPUT_PW_Y - 1, CHAR_WIDTH, CHAR_HEIGHT + 2, 1, true);
             mSSD1306.text(&mCharPending,
                           tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
                           NETWORK_INPUT_PW_Y, 0);
             break;
+    }
+}
+
+void Display::reprint_network_input() {
+
+    bool tooLong;
+    std::string cut_str;
+
+    switch (mNetworkPhase) {
+        case NEW_PW:
+            tooLong = mNetworkStrings[NEW_PW].length() >= MAX_OLED_STR_WIDTH;
+            if (tooLong) {
+                cut_str = mNetworkStrings[mNetworkPhase];
+                cut_str.erase(0, cut_str.length() - (MAX_OLED_STR_WIDTH - 1));
+            }
+            mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_PW], 0, NETWORK_INPUT_PW_Y);
+        case NEW_SSID:
+            tooLong = mNetworkStrings[NEW_SSID].length() >= MAX_OLED_STR_WIDTH;
+            if (tooLong) {
+                cut_str = mNetworkStrings[mNetworkPhase];
+                cut_str.erase(0, cut_str.length() - (MAX_OLED_STR_WIDTH - 1));
+            }
+            mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_SSID], 0, NETWORK_INPUT_SSID_Y);
+        case NEW_IP:
+            tooLong = mNetworkStrings[NEW_IP].length() >= MAX_OLED_STR_WIDTH;
+            if (tooLong) {
+                cut_str = mNetworkStrings[mNetworkPhase];
+                cut_str.erase(0, cut_str.length() - (MAX_OLED_STR_WIDTH - 1));
+            }
+            mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_IP], 0, NETWORK_INPUT_IP_Y);
     }
 }

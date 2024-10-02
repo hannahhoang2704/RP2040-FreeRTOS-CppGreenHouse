@@ -18,13 +18,14 @@ public:
 
     TaskHandle_t get_handle() const;
 
+    static void notify(eNotifyAction eAction, uint32_t note);
+
 private:
     void display();
     static void task_display(void *params);
 
     void update();
 
-    void print_new_state();
     void print_status_base();
     void reprint_CO2_target();
     void reprint_CO2_measurement();
@@ -36,7 +37,8 @@ private:
     void reprint_network_input();
     void reprint_network_pending_char();
 
-    TaskHandle_t mTaskHandle;
+    static TaskHandle_t mTaskHandle;
+    static uint64_t mPrevNotification;
     ssd1306os mSSD1306;
 
     /// printing axioms
@@ -78,8 +80,8 @@ private:
     float mRelHum{0};
     float mTemp{0};
     char mCharPending{};
-    network_phase mRelogPhase{NEW_IP};
-    std::vector<std::string> mRelogStrings{"", "", ""};
+    network_phase mNetworkPhase{NEW_IP};
+    std::vector<std::string> mNetworkStrings{"", "", ""};
 
     std::stringstream ssValue;
 

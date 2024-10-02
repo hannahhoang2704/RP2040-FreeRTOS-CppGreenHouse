@@ -74,7 +74,6 @@ private:
         ROT_RELEASE
     } mEvent{UNKNOWN};
 
-    static const uint64_t TASK_NOTIFICATION_RATE_LIMIT_US{30000}; // RTOS task notification doesn't like bombardment
     static const uint64_t BUTTON_DEBOUNCE{400000};
     std::map<uint, uint64_t> mPrevEventTimeMap;
     uint64_t mPrevBackspace{0};
@@ -90,8 +89,8 @@ private:
     int16_t mCO2TargetCurr{0};
     int16_t mCO2TargetPending{0};
     char mCharPending{INIT_CHAR};
-    network_phase mRelogPhase{NEW_IP};
-    std::vector<std::string> mRelogStrings{"", "", ""};
+    network_phase mNetworkPhase{NEW_IP};
+    std::vector<std::string> mNetworkStrings{"", "", ""};
 
     /// RTOS infrastructure
     RTOS_infrastructure iRTOS;
