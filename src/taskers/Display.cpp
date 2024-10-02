@@ -187,7 +187,7 @@ void Display::reprint_hum() {
 void Display::reprint_temp() {
     ssValue.str("");
     if (xQueuePeek(iRTOS.qTemperature, &mTemperature, 0) == pdFALSE) {
-        if (mNotification & bHUMIDITY) {
+        if (mNotification & bTEMPERATURE) {
             Logger::log("WARNING: qTemperature empty\n");
         }
         ssValue << setw(STATUS_VALUE_W) << "N/A";
