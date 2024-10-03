@@ -51,6 +51,7 @@ private:
     int16_t mFan{0};
     float mHumidity{0};
     float mTemperature{0};
+    const float UPDATE_THRESHOLD{1};
 
     const float CO2_FATAL{2000};
     const float CO2_DELTA_MARGIN{100};

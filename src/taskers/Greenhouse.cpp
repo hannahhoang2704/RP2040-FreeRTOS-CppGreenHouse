@@ -72,15 +72,24 @@ void Greenhouse::automate_greenhouse() {
 }
 
 void Greenhouse::update_sensors() {
+    float prevCO2         = mCO2Measurement;
+    int prevPressure      = mPressure;
+    float prevHumidity    = mHumidity;
+    float prevTemperature = mTemperature;
     mCO2Measurement = sCO2.update();
-    mPressure = sPressure.update_SDP610();
-    mHumidity = sHumidity.update();
-    mTemperature = sTemperature.update_all();
+    mPressure       = sPressure.update_SDP610();
+    mHumidity       = sHumidity.update();
+    mTemperature    = sTemperature.update_all();
     xQueueOverwrite(iRTOS.qCO2Measurement, &mCO2Measurement);
-    xQueueOverwrite(iRTOS.qPressure, &mPressure);
-    xQueueOverwrite(iRTOS.qHumidity, &mHumidity);
-    xQueueOverwrite(iRTOS.qTemperature, &mTemperature);
-    Display::notify(eSetBits, bCO2_MEASURE | bPRESSURE | bHUMIDITY | bTEMPERATURE);
+    xQueueOverwrite(iRTOS.qPressure,       &mPressure);
+    xQueueOverwrite(iRTOS.qHumidity,       &mHumidity);
+    xQueueOverwrite(iRTOS.qTemperature,    &mTemperature);
+    if (abs(prevCO2 - mCO2Measurement)      > UPDATE_THRESHOLD ||
+        static_cast<float>(abs(prevPressure - mPressure)) > UPDATE_THRESHOLD ||
+        abs(prevHumidity - mHumidity)       > UPDATE_THRESHOLD ||
+        abs(prevTemperature - mTemperature) > UPDATE_THRESHOLD) {
+        xSemaphoreGive(iRTOS.sUpdateDisplay);
+    }
 }
 
 void Greenhouse::actuate() {

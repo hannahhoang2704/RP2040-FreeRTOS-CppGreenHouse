@@ -44,23 +44,16 @@ private:
     static const uint8_t MAX_OLED_STR_WIDTH {128 / CHAR_WIDTH};
     static const uint8_t MAX_OLED_STR_HEIGHT{64 / CHAR_HEIGHT};
 
-    static const uint8_t STATUS_GAP{1};
-    static const uint8_t STATUS_CO2T_Y{1 + (CHAR_HEIGHT + STATUS_GAP) * 0};
-    static const uint8_t STATUS_CO2M_Y{1 + (CHAR_HEIGHT + STATUS_GAP) * 1};
-    static const uint8_t STATUS_PRES_Y{1 + (CHAR_HEIGHT + STATUS_GAP) * 2};
-    static const uint8_t STATUS_FAN_Y {1 + (CHAR_HEIGHT + STATUS_GAP) * 3};
-    static const uint8_t STATUS_HUM_Y {1 + (CHAR_HEIGHT + STATUS_GAP) * 4};
-    static const uint8_t STATUS_TEMP_Y{1 + (CHAR_HEIGHT + STATUS_GAP) * 5};
+    static const uint8_t LINE_GAP{1};
+    static const uint8_t LINE_0_Y{1 + (CHAR_HEIGHT + LINE_GAP) * 0};
+    static const uint8_t LINE_1_Y{1 + (CHAR_HEIGHT + LINE_GAP) * 1};
+    static const uint8_t LINE_2_Y{1 + (CHAR_HEIGHT + LINE_GAP) * 2};
+    static const uint8_t LINE_3_Y {1 + (CHAR_HEIGHT + LINE_GAP) * 3};
+    static const uint8_t LINE_4_Y {1 + (CHAR_HEIGHT + LINE_GAP) * 4};
+    static const uint8_t LINE_5_Y{1 + (CHAR_HEIGHT + LINE_GAP) * 5};
 
     static const uint8_t STATUS_VALUE_X{CHAR_WIDTH * 6 - 1};
     static const uint8_t STATUS_VALUE_W{6};
-
-    static const uint8_t NETWORK_DESC_IP_Y  {22 * 0};
-    static const uint8_t NETWORK_DESC_SSID_Y{22 * 1};
-    static const uint8_t NETWORK_DESC_PW_Y  {22 * 2};
-    static const uint8_t NETWORK_INPUT_IP_Y  {9 + NETWORK_DESC_IP_Y};
-    static const uint8_t NETWORK_INPUT_SSID_Y{9 + NETWORK_DESC_SSID_Y};
-    static const uint8_t NETWORK_INPUT_PW_Y  {9 + NETWORK_DESC_PW_Y};
 
     static const uint8_t CONNECTION_Y{57};
 

@@ -80,12 +80,12 @@ void Display::update() {
 /// STATUS Screen
 
 void Display::print_status_base() {
-    mSSD1306.text("CO2T:", 0, STATUS_CO2T_Y);
-    mSSD1306.text("CO2M:", 0, STATUS_CO2M_Y);
-    mSSD1306.text("Pres:", 0, STATUS_PRES_Y);
-    mSSD1306.text(" Fan:", 0, STATUS_FAN_Y);
-    mSSD1306.text(" Hum:", 0, STATUS_HUM_Y);
-    mSSD1306.text("Temp:", 0, STATUS_TEMP_Y);
+    mSSD1306.text("CO2T:", 0, LINE_0_Y);
+    mSSD1306.text("CO2M:", 0, LINE_1_Y);
+    mSSD1306.text("Pres:", 0, LINE_2_Y);
+    mSSD1306.text(" Fan:", 0, LINE_3_Y);
+    mSSD1306.text(" Hum:", 0, LINE_4_Y);
+    mSSD1306.text("Temp:", 0, LINE_5_Y);
 }
 
 void Display::reprint_CO2_target() {
@@ -110,10 +110,10 @@ void Display::reprint_CO2_target() {
     }
     if (!pendingQempty) {
         if (pending)
-            mSSD1306.rect(STATUS_VALUE_X - CHAR_WIDTH, STATUS_CO2T_Y - 1,
+            mSSD1306.rect(STATUS_VALUE_X - CHAR_WIDTH, LINE_0_Y - 1,
                           OLED_WIDTH - STATUS_VALUE_X + CHAR_WIDTH, 9, pending, true);
     }
-    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_CO2T_Y, pendingQempty || !pending);
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_0_Y, pendingQempty || !pending);
 }
 
 void Display::reprint_CO2_measurement() {
@@ -125,7 +125,7 @@ void Display::reprint_CO2_measurement() {
         ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mCO2Measurement;
     }
     ssValue << " ppm";
-    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_CO2M_Y, 1);
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_1_Y, 1);
 }
 
 void Display::reprint_pressure() {
@@ -137,7 +137,7 @@ void Display::reprint_pressure() {
         ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mPressure;
     }
     ssValue << " ppm";
-    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_PRES_Y, 1);
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_2_Y, 1);
 }
 
 void Display::reprint_fan() {
@@ -149,7 +149,7 @@ void Display::reprint_fan() {
         ssValue << setw(STATUS_VALUE_W - 2) << mFan / 10 << "." << mFan % 10;
     }
     ssValue << " %";
-    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_FAN_Y, 1);
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_3_Y, 1);
 }
 
 void Display::reprint_hum() {
@@ -161,7 +161,7 @@ void Display::reprint_hum() {
         ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mHumidity;
     }
     ssValue << " %";
-    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_HUM_Y, 1);
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_4_Y, 1);
 }
 
 void Display::reprint_temp() {
@@ -173,7 +173,7 @@ void Display::reprint_temp() {
         ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mTemperature;
     }
     ssValue << " C";
-    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, STATUS_TEMP_Y, 1);
+    mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_5_Y, 1);
 }
 
 /// NETWORK Screen
@@ -197,11 +197,11 @@ void Display::print_network_base() {
     }
     switch (mNetworkPhase) {
         case NEW_PW:
-            mSSD1306.text("WiFi PW:", 0, NETWORK_DESC_PW_Y);
+            mSSD1306.text("WiFi PW:", 0, LINE_4_Y);
         case NEW_SSID:
-            mSSD1306.text("WiFi SSID:", 0, NETWORK_DESC_SSID_Y);
+            mSSD1306.text("WiFi SSID:", 0, LINE_2_Y);
         case NEW_IP:
-            mSSD1306.text("ThingSpeak IP:", 0, NETWORK_DESC_IP_Y);
+            mSSD1306.text("ThingSpeak IP:", 0, LINE_0_Y);
     }
 }
 
@@ -212,30 +212,24 @@ void Display::reprint_network_pending_char() {
 
     size_t str_len = mNetworkStrings[mNetworkPhase].length();
     bool tooLong = str_len > MAX_OLED_STR_WIDTH - 1;
+    uint8_t line;
 
     switch (mNetworkPhase) {
         case NEW_IP:
-            mSSD1306.rect(tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
-                          NETWORK_INPUT_IP_Y - 1, CHAR_WIDTH, CHAR_HEIGHT + 2, 1, true);
-            mSSD1306.text(&mCharPending,
-                          tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
-                          NETWORK_INPUT_IP_Y, 0);
+            line = LINE_1_Y;
             break;
         case NEW_SSID:
-            mSSD1306.rect(tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
-                          NETWORK_INPUT_SSID_Y - 1, CHAR_WIDTH, CHAR_HEIGHT + 2, 1, true);
-            mSSD1306.text(&mCharPending,
-                          tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
-                          NETWORK_INPUT_SSID_Y, 0);
+            line = LINE_3_Y;
             break;
         case NEW_PW:
-            mSSD1306.rect(tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
-                          NETWORK_INPUT_PW_Y - 1, CHAR_WIDTH, CHAR_HEIGHT + 2, 1, true);
-            mSSD1306.text(&mCharPending,
-                          tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
-                          NETWORK_INPUT_PW_Y, 0);
+            line = LINE_5_Y;
             break;
     }
+    mSSD1306.rect(tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
+                  line - 1, CHAR_WIDTH, CHAR_HEIGHT + 2, 1, true);
+    mSSD1306.text(&mCharPending,
+                  tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
+                  line * 1, 0);
 }
 
 void Display::reprint_network_input() {
@@ -256,23 +250,23 @@ void Display::reprint_network_input() {
         case NEW_PW:
             tooLong = mNetworkStrings[NEW_PW].length() >= MAX_OLED_STR_WIDTH;
             if (tooLong) {
-                cut_str = mNetworkStrings[mNetworkPhase];
+                cut_str = mNetworkStrings[NEW_PW];
                 cut_str.erase(0, cut_str.length() - (MAX_OLED_STR_WIDTH - 1));
             }
-            mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_PW], 0, NETWORK_INPUT_PW_Y);
+            mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_PW], 0, LINE_5_Y);
         case NEW_SSID:
             tooLong = mNetworkStrings[NEW_SSID].length() >= MAX_OLED_STR_WIDTH;
             if (tooLong) {
-                cut_str = mNetworkStrings[mNetworkPhase];
+                cut_str = mNetworkStrings[NEW_SSID];
                 cut_str.erase(0, cut_str.length() - (MAX_OLED_STR_WIDTH - 1));
             }
-            mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_SSID], 0, NETWORK_INPUT_SSID_Y);
+            mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_SSID], 0, LINE_3_Y);
         case NEW_IP:
             tooLong = mNetworkStrings[NEW_IP].length() >= MAX_OLED_STR_WIDTH;
             if (tooLong) {
-                cut_str = mNetworkStrings[mNetworkPhase];
+                cut_str = mNetworkStrings[NEW_IP];
                 cut_str.erase(0, cut_str.length() - (MAX_OLED_STR_WIDTH - 1));
             }
-            mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_IP], 0, NETWORK_INPUT_IP_Y);
+            mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_IP], 0, LINE_1_Y);
     }
 }
