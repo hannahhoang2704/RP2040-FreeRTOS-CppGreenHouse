@@ -4,10 +4,7 @@
 #include <utility>
 
 EEPROM::EEPROM(std::shared_ptr<PicoI2C> i2c_sp, uint8_t device_address):
-mI2C(i2c_sp), mDevAddr(device_address) {
-//    index = get(LOG_INDEX_ADDR);
-//    index = (index > MAX_ENTRIES) ? 0 : index;
-}
+mI2C(i2c_sp), mDevAddr(device_address) {}
 
 
 void EEPROM::read_from_eeprom(uint16_t address, uint8_t *data, uint length){
@@ -63,18 +60,8 @@ void EEPROM::put(uint16_t address, const std::string& str) {
     data_str[strlen(str_)] = '\0';
     uint16_t crc = crc16(data_str, string_length);
     data_str[string_length] = static_cast<uint8_t>((crc >> BITS_PER_BYTE) & 0xFF);
-    data_str[string_length + 1] = static_cast<uint8_t>(crc & 0xFF);        //check again the size length
-
+    data_str[string_length + 1] = static_cast<uint8_t>(crc & 0xFF);
     write_to_eeprom(address, data_str, ENTRY_SIZE);
-//    size_t str_length = str.length() + 1; // Include null terminator
-//    uint8_t data[str_length + CRC_CHAR];
-//
-//    memcpy(data, str.c_str(), str_length);
-//
-//    uint16_t crc = crc16(reinterpret_cast<const uint8_t*>(str.c_str()), str_length);
-//    data[str_length] = static_cast<uint8_t>((crc >> 8) & 0xFF); // High byte of CRC
-//    data[str_length + 1] = static_cast<uint8_t>(crc & 0xFF);    // Low byte of CRC
-//    write_to_eeprom(address, data, str_length + CRC_CHAR);
 }
 
 std::string EEPROM::get_str(uint16_t address) {
@@ -89,7 +76,7 @@ std::string EEPROM::get_str(uint16_t address) {
         Logger::log("%s\n", log_str.c_str());
         return log_str;
     }else{
-        Logger::log("crc failed\n");
+        Logger::log("crc failed, return empty string\n");
         return "";
     }
 }
@@ -106,7 +93,7 @@ uint16_t EEPROM::crc16(const uint8_t *data_p, size_t length) {
 }
 
 void EEPROM::put_log_entry(const char *str) {
-    if (index >= MAX_ENTRIES) {
+    if (log_index >= MAX_ENTRIES) {
         Logger::log("Maximum log entries. Erasing the log to log the messages\n");
         erase_logs();
     }
@@ -123,21 +110,22 @@ void EEPROM::put_log_entry(const char *str) {
     log_buf[string_length] = (uint8_t)(crc >> BITS_PER_BYTE);
     log_buf[string_length + 1] = (uint8_t)crc;         //check again the size length
 
-    uint16_t write_address = (uint16_t) EEPROM::LOG_FIRST_ADDR + (index * (uint16_t) ENTRY_SIZE);
-    if (write_address < EEPROM::LOG_FIRST_ADDR + (ENTRY_SIZE * MAX_ENTRIES)) {
-        Logger::log("write address for next log is %lu \n", write_address);
+    uint16_t write_address = (uint16_t) EEPROM::LOG_FIRST_ADDR + (log_index * (uint16_t) ENTRY_SIZE);
+    if (write_address < (uint16_t)EEPROM::LOG_FIRST_ADDR + ((uint16_t)ENTRY_SIZE * (uint16_t) MAX_ENTRIES)) {
         write_to_eeprom(write_address, log_buf, ENTRY_SIZE);
-        index += 1;
-        put(LOG_INDEX_ADDR, index);
+        log_index += 1;
+        put(LOG_INDEX_ADDR, log_index);
+    }else{
+        Logger::log("Address %u is exceeded the log entries. Unable to write to EEPROM\n", write_address);
     }
 }
 
 // read all the log entries that are valid from eeprom using crc to check
 void EEPROM::get_log_entry() {
     Logger::log("Reading log entry\n");
-    for (int i = 0; i < index; ++i) {
+    for (int idx = 0; idx < log_index; ++idx) {
         uint8_t read_buff[ENTRY_SIZE];
-        uint16_t read_address = (uint16_t) EEPROM::LOG_FIRST_ADDR + (i * (uint16_t) ENTRY_SIZE);
+        uint16_t read_address = (uint16_t) EEPROM::LOG_FIRST_ADDR + (idx * (uint16_t) ENTRY_SIZE);
         read_from_eeprom(read_address, (uint8_t *) &read_buff, ENTRY_SIZE);
         int term_zero_index = 0;
         while (read_buff[term_zero_index] != '\0') {
@@ -147,7 +135,7 @@ void EEPROM::get_log_entry() {
             std::string log_str(reinterpret_cast<char*>(read_buff), term_zero_index);
             Logger::log("%s\n", log_str.c_str());
         } else {
-            Logger::log("Invalid or empty entry at index %d\n", index);
+            Logger::log("Invalid or empty entry at index %d\n", log_index);
             break;
         }
     }
@@ -160,11 +148,10 @@ void EEPROM::erase_logs() {
         uint8_t buf[] = {00};
         write_to_eeprom(write_address, buf, 1);
     }
-    index = 0;
-    put(EEPROM::LOG_INDEX_ADDR, index);
+    log_index = 0;
+    put(EEPROM::LOG_INDEX_ADDR, log_index);
 }
 
-void EEPROM::get_log_index_value(const uint16_t idx) {
-    index = idx;
-    Logger::log("index value is %u\n", index);
+void EEPROM::set_log_index_value(const uint16_t idx) {
+    log_index = idx;
 }
