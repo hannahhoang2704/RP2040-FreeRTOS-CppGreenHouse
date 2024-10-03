@@ -4,8 +4,11 @@
 #include "Storage.h"
 #include "Logger.h"
 
-Storage::Storage(const std::shared_ptr<PicoI2C>&i2c_sp): mEEPROM(i2c_sp) {
-    xTaskCreate(task_storage, "Storage", 256, this, 1, &mTaskHandle);
+Storage::Storage(const std::shared_ptr<PicoI2C>&i2c_sp,  RTOS_infrastructure RTOS_infrastructure):
+    mEEPROM(i2c_sp),
+    iRTOS(RTOS_infrastructure) {
+    xTaskCreate(task_storage, "Storage", 256, (void *) this,
+                tskIDLE_PRIORITY + 1, &mTaskHandle);
     if(mTaskHandle != nullptr){
         Logger::log("Created STORAGE task.\n");
     } else{
@@ -19,21 +22,19 @@ void Storage::task_storage(void *params) {
 }
 
 void Storage::storage() {
-
     uint16_t index = mEEPROM.get(EEPROM::LOG_INDEX_ADDR);
-    Logger::log("Index stored in eeprom is %lu\n", index);
     index = (index > EEPROM::MAX_ENTRIES) ? 0 : index;
-    Logger::log("Index after verify from eeprom is %lu\n", index);
     mEEPROM.set_log_index_value(index);
 
-    Logger::log("Read value %d\n", mEEPROM.get(EEPROM::CO2_TARGET_ADDR));
-    uint16_t val = 1200;
+    uint16_t  stored_co2_target = mEEPROM.get(EEPROM::CO2_TARGET_ADDR);
+    stored_co2_target = (stored_co2_target> CO2_MAX || stored_co2_target < CO2_MIN ) ? CO2_MIN : stored_co2_target;
+    xQueueOverwrite(iRTOS.qCO2TargetCurrent, &stored_co2_target);
+
+
+    // below is just to test the eeprom storage
     std::string pw = "pw2024";
     std::string second_str = "usernameIoT";
     std::string ip = "192.168.10.10";
-
-    mEEPROM.put(EEPROM::CO2_TARGET_ADDR, val);
-    Logger::log("Read value %d\n", mEEPROM.get(EEPROM::CO2_TARGET_ADDR));
 
     mEEPROM.put(EEPROM::PW_ADDR, pw);
     mEEPROM.put(EEPROM::USERNAME_ADDR, second_str);
@@ -48,10 +49,9 @@ void Storage::storage() {
 
     mEEPROM.put_log_entry(pw.c_str());
     mEEPROM.put_log_entry(second_str.c_str());
-
     mEEPROM.get_log_entry();
-    while (true) {
 
+    while (true) {
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

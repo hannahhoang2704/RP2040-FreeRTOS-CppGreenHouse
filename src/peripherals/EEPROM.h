@@ -14,8 +14,8 @@ public:
     static const uint16_t MAX_ENTRIES{32};
 
     enum eeprom_addr{
-        LOG_INDEX_ADDR = FIRST_ADDR,
-        CO2_TARGET_ADDR = FIRST_ADDR + ENTRY_SIZE,
+        LOG_INDEX_ADDR = FIRST_ADDR  + ENTRY_SIZE * 0,
+        CO2_TARGET_ADDR = FIRST_ADDR + ENTRY_SIZE * 1,
         IP_ADDR = FIRST_ADDR + ENTRY_SIZE * 2,
         USERNAME_ADDR = FIRST_ADDR + ENTRY_SIZE * 3,
         PW_ADDR = FIRST_ADDR + ENTRY_SIZE * 4,

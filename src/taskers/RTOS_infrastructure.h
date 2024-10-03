@@ -7,7 +7,8 @@
 // RTOS task notifications require breathing room
 // OLED gets crazy if events are sent too frequently -- i.e. with Rotor
 static const uint64_t TASK_NOTIFICATION_RATE_LIMIT_US{35000};
-
+static const int16_t CO2_MAX{1500};
+static const int16_t CO2_MIN{0};
 const char INIT_CHAR{'.'};
 const char MAX_STRING_LEN{64};
 

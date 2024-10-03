@@ -83,12 +83,24 @@ int main() {
             .sUpdateDisplay = xSemaphoreCreateBinary()
     };
 
+    // register all the queues
+    vQueueAddToRegistry(iRTOS.qNetworkPhase, "NetworkCredentials");
+    vQueueAddToRegistry(iRTOS.qCO2TargetPending, "CO2TargetPending");
+    vQueueAddToRegistry(iRTOS.qCO2TargetCurrent, "CO2TargetCurrent");
+    vQueueAddToRegistry(iRTOS.qCO2Measurement, "qCO2Measurement");
+    vQueueAddToRegistry(iRTOS.qPressure, "Pressure");
+    vQueueAddToRegistry(iRTOS.qFan, "Fan");
+    vQueueAddToRegistry(iRTOS.qHumidity, "Humidity");
+    vQueueAddToRegistry(iRTOS.qTemperature, "Temperature");
+    vQueueAddToRegistry(iRTOS.qCharPending, "CharacterPending");
+
+
     /// taskers
     new Display(OLED_SDP600_I2C, iRTOS);
     new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
     new Logger(CLI_UART);
-    new Storage(EEPROM_I2C);
-//  new SwitchHandler(iRTOS);
+    new Storage(EEPROM_I2C, iRTOS);
+    new SwitchHandler(iRTOS);
 
     Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();
