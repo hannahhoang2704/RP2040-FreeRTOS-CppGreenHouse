@@ -23,10 +23,10 @@ namespace Actuator {
         bool running();
         int16_t get_power() const;
         int16_t read_power();
-    private:
         const int16_t MAX_POWER{1000};
         const int16_t MIN_POWER{0};
         const int16_t OFF{0};
+    private:
         int16_t mSetPower{0};
 
         ModbusRegister mFanPower;

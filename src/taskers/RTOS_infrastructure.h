@@ -48,6 +48,8 @@ struct RTOS_infrastructure {
     QueueHandle_t qHumidity{nullptr};
     QueueHandle_t qTemperature{nullptr};
     QueueHandle_t qCharPending{nullptr};
+
+    SemaphoreHandle_t sUpdateGreenhouse;
 };
 
 #endif //FREERTOS_GREENHOUSE_RTOS_INFRASTRUCTURE_H

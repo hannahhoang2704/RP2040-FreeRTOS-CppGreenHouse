@@ -2,6 +2,10 @@
 #define RP2040_FREERTOS_IRQ_GREENHOUSE_H
 
 
+enum greenhouse_notifications {
+    bPASSIVE = 0x01
+};
+
 #include <memory>
 #include <utility>
 #include <iostream>
@@ -11,24 +15,50 @@
 #include "modbus/ModbusRegister.h"
 #include "Sensor.h"
 #include "Actuator.h"
+#include "RTOS_infrastructure.h"
+#include "timers.h"
 
 class Greenhouse {
 public:
-    Greenhouse(const std::shared_ptr<ModbusClient> &modbus_client, const std::shared_ptr<PicoI2C> &pressure_sensor_I2C);
+    Greenhouse(const std::shared_ptr<ModbusClient> &modbus_client, const std::shared_ptr<PicoI2C> &pressure_sensor_I2C, RTOS_infrastructure RTOSi);
 
+    static void notify(eNotifyAction eAction, uint32_t note);
 private:
     void automate_greenhouse();
-
     static void task_automate_greenhouse(void *params);
+    static void upkeep(TimerHandle_t xTimer);
 
-    TaskHandle_t mTaskHandle;
-    Sensor::CO2 mCO2;
-    Sensor::Humidity mHumidity;
-    Sensor::Temperature mTemperature;
-    Sensor::PressureSensor mPressure;
+    void update_sensors();
+    void actuate();
 
-    Actuator::Fan mFan;
-    Actuator::CO2_Emitter mCO2_Emitter;
+    static TaskHandle_t mTaskHandle;
+    TimerHandle_t mTimerHandle;
+    static uint64_t mPrevNotification;
+
+    const uint DEFAULT_TIMER_FREQ_MS{1000};
+    uint mTimerFreq{DEFAULT_TIMER_FREQ_MS};
+
+    Sensor::CO2 sCO2;
+    Sensor::PressureSensor sPressure;
+    Sensor::Humidity sHumidity;
+    Sensor::Temperature sTemperature;
+    Actuator::Fan aFan;
+    Actuator::CO2_Emitter aCO2_Emitter;
+
+    int16_t mCO2Target{0};
+    float mCO2Measurement{0};
+    int mPressure{0};
+    int16_t mFan{0};
+    float mHumidity{0};
+    float mTemperature{0};
+
+    const float CO2_FATAL{2000};
+    const float CO2_DELTA_MARGIN{100};
+    float mCO2Delta{0};
+    bool mCO2OnTarget{true};
+
+
+    RTOS_infrastructure iRTOS;
 };
 
 #endif //RP2040_FREERTOS_IRQ_GREENHOUSE_H
