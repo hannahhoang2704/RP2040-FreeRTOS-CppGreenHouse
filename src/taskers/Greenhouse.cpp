@@ -63,11 +63,10 @@ void Greenhouse::automate_greenhouse() {
         Logger::log("WARNING: qCO2TargetCurrent empty\n");
     }
     xTimerStart(mTimerHandle, portMAX_DELAY);
-    xSemaphoreGive(iRTOS.sUpdateGreenhouse);
     while (true) {
-        xSemaphoreTake(iRTOS.sUpdateGreenhouse, portMAX_DELAY);
         update_sensors();
         actuate();
+        xSemaphoreTake(iRTOS.sUpdateGreenhouse, portMAX_DELAY);
     }
 }
 

@@ -89,6 +89,7 @@ private:
     uint32_t mDisplayNote;
 
     /// state data
+    const int16_t CO2_INCREMENT{1};
     static const int16_t CO2_MAX{1500};
     static const int16_t CO2_MIN{0};
 

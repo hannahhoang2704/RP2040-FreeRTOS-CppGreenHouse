@@ -29,22 +29,12 @@ void Display::display() {
     Logger::log("Initiated\n");
     mSSD1306.init();
 
-    print_status_base();
-    reprint_CO2_target();
-    reprint_CO2_measurement();
-    reprint_pressure();
-    reprint_fan();
-    reprint_hum();
-    reprint_temp();
-    mSSD1306.text("Connected", 0, CONNECTION_Y);
-    mSSD1306.show();
-
     while (true) {
-        xSemaphoreTake(iRTOS.sUpdateDisplay, portMAX_DELAY);
         mSSD1306.fill(0);
         update();
         mSSD1306.show();
         vTaskDelay(10); // some flickering can be witness without limits.
+        xSemaphoreTake(iRTOS.sUpdateDisplay, portMAX_DELAY);
     }
 }
 
@@ -64,17 +54,18 @@ void Display::update() {
 
     if (mState == STATUS) {
         print_status_base();
-        reprint_CO2_target();
-        reprint_CO2_measurement();
-        reprint_pressure();
-        reprint_fan();
-        reprint_hum();
-        reprint_temp();
+        print_CO2_target();
+        print_CO2_measurement();
+        print_pressure();
+        print_fan();
+        print_hum();
+        print_temp();
     } else {
         print_network_base();
-        reprint_network_input();
-        reprint_network_pending_char();
+        print_network_input();
+        print_network_pending_char();
     }
+    print_connection();
 }
 
 /// STATUS Screen
@@ -88,7 +79,7 @@ void Display::print_status_base() {
     mSSD1306.text("Temp:", 0, LINE_5_Y);
 }
 
-void Display::reprint_CO2_target() {
+void Display::print_CO2_target() {
     ssValue.str("");
     bool pendingQempty = xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE;
     bool currentQempty = xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent, 0) == pdFALSE;
@@ -116,7 +107,7 @@ void Display::reprint_CO2_target() {
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_0_Y, pendingQempty || !pending);
 }
 
-void Display::reprint_CO2_measurement() {
+void Display::print_CO2_measurement() {
     ssValue.str("");
     if (xQueuePeek(iRTOS.qCO2Measurement, &mCO2Measurement, 0) == pdFALSE) {
         Logger::log("WARNING: qCO2Measurement empty\n");
@@ -128,7 +119,7 @@ void Display::reprint_CO2_measurement() {
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_1_Y, 1);
 }
 
-void Display::reprint_pressure() {
+void Display::print_pressure() {
     ssValue.str("");
     if (xQueuePeek(iRTOS.qPressure, &mPressure, 0) == pdFALSE) {
         Logger::log("WARNING: qPressure empty\n");
@@ -140,7 +131,7 @@ void Display::reprint_pressure() {
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_2_Y, 1);
 }
 
-void Display::reprint_fan() {
+void Display::print_fan() {
     ssValue.str("");
     if (xQueuePeek(iRTOS.qFan, &mFan, 0) == pdFALSE) {
         Logger::log("WARNING: qFan empty\n");
@@ -152,7 +143,7 @@ void Display::reprint_fan() {
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_3_Y, 1);
 }
 
-void Display::reprint_hum() {
+void Display::print_hum() {
     ssValue.str("");
     if (xQueuePeek(iRTOS.qHumidity, &mHumidity, 0) == pdFALSE) {
         Logger::log("WARNING: qHumidity empty\n");
@@ -164,7 +155,7 @@ void Display::reprint_hum() {
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_4_Y, 1);
 }
 
-void Display::reprint_temp() {
+void Display::print_temp() {
     ssValue.str("");
     if (xQueuePeek(iRTOS.qTemperature, &mTemperature, 0) == pdFALSE) {
         Logger::log("WARNING: qTemperature empty\n");
@@ -186,12 +177,12 @@ void Display::print_network_base() {
         if (prevPhase == NEW_PW && mNetworkPhase == NEW_IP) {
             for (std::string &str: mNetworkStrings) str.clear();
             print_status_base();
-            reprint_CO2_target();
-            reprint_CO2_measurement();
-            reprint_pressure();
-            reprint_fan();
-            reprint_hum();
-            reprint_temp();
+            print_CO2_target();
+            print_CO2_measurement();
+            print_pressure();
+            print_fan();
+            print_hum();
+            print_temp();
             return;
         }
     }
@@ -205,7 +196,7 @@ void Display::print_network_base() {
     }
 }
 
-void Display::reprint_network_pending_char() {
+void Display::print_network_pending_char() {
     if (xQueuePeek(iRTOS.qCharPending, &mCharPending, 0) == pdFALSE) {
         Logger::log("WARNING: qCharPending empty\n");
     }
@@ -232,7 +223,7 @@ void Display::reprint_network_pending_char() {
                   line * 1, 0);
 }
 
-void Display::reprint_network_input() {
+void Display::print_network_input() {
 
     if (xQueueReceive(iRTOS.qCharAction, &mCharAction, 0) == pdTRUE) {
         if (mCharAction == bCHAR_INSERT) {
@@ -269,4 +260,24 @@ void Display::reprint_network_input() {
             }
             mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_IP], 0, LINE_1_Y);
     }
+}
+
+void Display::print_connection() {
+    if (xQueuePeek(iRTOS.qConnectionState, &mConnectionState, 0) == pdFALSE) {
+        Logger::log("qConnectionState empty\n");
+    }
+    ssValue.str("");
+    ssValue << setw(MAX_OLED_STR_WIDTH);
+    switch (mConnectionState) {
+        case bCONNECTING:
+            ssValue << setw(MAX_OLED_STR_WIDTH) << "Connecting...";
+            break;
+        case bCONNECTED:
+            ssValue << setw(MAX_OLED_STR_WIDTH) << "Connected";
+            break;
+        case bNOT_CONNECTED:
+            ssValue << setw(MAX_OLED_STR_WIDTH) << "Not connected";
+            break;
+    }
+    mSSD1306.text(ssValue.str(), 0, LINE_6_Y);
 }

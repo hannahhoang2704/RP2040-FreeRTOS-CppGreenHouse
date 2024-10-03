@@ -23,15 +23,16 @@ private:
     void update();
 
     void print_status_base();
-    void reprint_CO2_target();
-    void reprint_CO2_measurement();
-    void reprint_pressure();
-    void reprint_fan();
-    void reprint_hum();
-    void reprint_temp();
+    void print_CO2_target();
+    void print_CO2_measurement();
+    void print_pressure();
+    void print_fan();
+    void print_hum();
+    void print_temp();
     void print_network_base();
-    void reprint_network_input();
-    void reprint_network_pending_char();
+    void print_network_input();
+    void print_network_pending_char();
+    void print_connection();
 
     TaskHandle_t mTaskHandle;
     ssd1306os mSSD1306;
@@ -48,14 +49,13 @@ private:
     static const uint8_t LINE_0_Y{1 + (CHAR_HEIGHT + LINE_GAP) * 0};
     static const uint8_t LINE_1_Y{1 + (CHAR_HEIGHT + LINE_GAP) * 1};
     static const uint8_t LINE_2_Y{1 + (CHAR_HEIGHT + LINE_GAP) * 2};
-    static const uint8_t LINE_3_Y {1 + (CHAR_HEIGHT + LINE_GAP) * 3};
-    static const uint8_t LINE_4_Y {1 + (CHAR_HEIGHT + LINE_GAP) * 4};
+    static const uint8_t LINE_3_Y{1 + (CHAR_HEIGHT + LINE_GAP) * 3};
+    static const uint8_t LINE_4_Y{1 + (CHAR_HEIGHT + LINE_GAP) * 4};
     static const uint8_t LINE_5_Y{1 + (CHAR_HEIGHT + LINE_GAP) * 5};
+    static const uint8_t LINE_6_Y{1 + (CHAR_HEIGHT + LINE_GAP) * 6};
 
     static const uint8_t STATUS_VALUE_X{CHAR_WIDTH * 6 - 1};
     static const uint8_t STATUS_VALUE_W{6};
-
-    static const uint8_t CONNECTION_Y{57};
 
     /// program state data
     uint8_t mState{STATUS};
@@ -69,6 +69,7 @@ private:
     char mCharPending{INIT_CHAR};
     uint8_t mNetworkPhase{NEW_IP};
     uint8_t mCharAction{bNONE};
+    uint8_t mConnectionState{bCONNECTING};
     std::vector<std::string> mNetworkStrings{"", "", ""};
 
     std::stringstream ssValue;

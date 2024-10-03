@@ -46,13 +46,11 @@ void SwitchHandler::task_switch_handler(void *params) {
 
 void SwitchHandler::switch_handler() {
     Logger::log("Initiated\n");
-    Logger::log("Waiting for storage to upload CO2TargetCurrent...\n");
     if (xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent, pdMS_TO_TICKS(1000)) == pdFALSE) {
-        Logger::log("WARNING: Storage didn't upload CO2TargetCurrent. Defaulting to %hu ppm\n", mCO2TargetCurrent);
+        Logger::log("WARNING: qCO2TargetCurrent empty\n", mCO2TargetCurrent);
     } else {
         mCO2TargetPending = mCO2TargetCurrent;
     }
-
     set_sw_irq(true);
     Logger::log("Switch IRQs enabled\n");
 

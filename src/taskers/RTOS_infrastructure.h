@@ -9,7 +9,6 @@
 static const uint64_t TASK_NOTIFICATION_RATE_LIMIT_US{35000};
 
 const char INIT_CHAR{'.'};
-const int16_t CO2_INCREMENT{1};
 
 enum program_state {
     STATUS,
@@ -23,24 +22,15 @@ enum network_phase {
 };
 
 enum character_action {
-    bNONE = 0x0,
-    bCHAR_INSERT = 0x1,
-    bCHAR_BACKSPACE = 0x2
+    bNONE,
+    bCHAR_INSERT,
+    bCHAR_BACKSPACE
 };
 
-enum display_notifications {
-    bSTATE          = 0x0001,
-    bCO2_TARGET     = 0x0002,
-    bCO2_MEASURE    = 0x0004,
-    bPRESSURE       = 0x0008,
-    bFAN            = 0x0010,
-    bHUMIDITY       = 0x0020,
-    bTEMPERATURE    = 0x0040,
-    bNETWORK_PHASE  = 0x0080,
-    bCHANGE_CHAR    = 0x0100,
-    bINSERT_CHAR    = 0x0200,
-    bBACKSPACE      = 0x0400,
-    bCONNCETING     = 0x0800
+enum connection_state {
+    bCONNECTING,
+    bCONNECTED,
+    bNOT_CONNECTED
 };
 
 struct RTOS_infrastructure {
@@ -55,6 +45,7 @@ struct RTOS_infrastructure {
     QueueHandle_t qTemperature{nullptr};
     QueueHandle_t qCharPending{nullptr};
     QueueHandle_t qCharAction{nullptr};
+    QueueHandle_t qConnectionState{nullptr};
 
     SemaphoreHandle_t sUpdateGreenhouse{nullptr};
     SemaphoreHandle_t sUpdateDisplay{nullptr};

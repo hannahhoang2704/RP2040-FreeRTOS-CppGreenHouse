@@ -46,11 +46,11 @@ private:
     Actuator::CO2_Emitter aCO2_Emitter;
 
     int16_t mCO2Target{0};
-    float mCO2Measurement{0};
-    int mPressure{0};
-    int16_t mFan{0};
-    float mHumidity{0};
-    float mTemperature{0};
+    float mCO2Measurement{-1};
+    int mPressure{-1};
+    int16_t mFan{-1};
+    float mHumidity{-1};
+    float mTemperature{-273.16};
     const float UPDATE_THRESHOLD{1};
 
     const float CO2_FATAL{2000};

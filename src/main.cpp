@@ -71,6 +71,7 @@ int main() {
             .qTemperature = xQueueCreate(1, sizeof(float)),
             .qCharPending = xQueueCreate(1, sizeof(char)),
             .qCharAction = xQueueCreate(1, sizeof(uint8_t)),
+            .qConnectionState = xQueueCreate(1, sizeof(uint8_t)),
 
             .sUpdateGreenhouse = xSemaphoreCreateBinary(),
             .sUpdateDisplay = xSemaphoreCreateBinary()
