@@ -97,8 +97,7 @@ private:
     int16_t mCO2TargetCurrent{0};
     int16_t mCO2TargetPending{mCO2TargetCurrent};
     char mCharPending{INIT_CHAR};
-    uint8_t mNetworkPhase{NEW_IP};
-    uint8_t mCharAction{bNONE};
+    uint8_t mNetworkPhase{NEW_API};
     std::vector<std::string> mNetworkStrings{"", "", ""};
 
     /// RTOS infrastructure

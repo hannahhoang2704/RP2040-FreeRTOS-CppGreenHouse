@@ -9,6 +9,7 @@
 static const uint64_t TASK_NOTIFICATION_RATE_LIMIT_US{35000};
 
 const char INIT_CHAR{'.'};
+const char MAX_STRING_LEN{64};
 
 enum program_state {
     STATUS,
@@ -16,15 +17,9 @@ enum program_state {
 };
 
 enum network_phase {
-    NEW_IP,
+    NEW_API,
     NEW_SSID,
     NEW_PW
-};
-
-enum character_action {
-    bNONE,
-    bCHAR_INSERT,
-    bCHAR_BACKSPACE
 };
 
 enum connection_state {
@@ -44,8 +39,10 @@ struct RTOS_infrastructure {
     QueueHandle_t qHumidity{nullptr};
     QueueHandle_t qTemperature{nullptr};
     QueueHandle_t qCharPending{nullptr};
-    QueueHandle_t qCharAction{nullptr};
     QueueHandle_t qConnectionState{nullptr};
+    QueueHandle_t qNetworkStrings[3] {[NEW_API] = nullptr,
+                                      [NEW_SSID] = nullptr,
+                                      [NEW_PW] = nullptr};
 
     SemaphoreHandle_t sUpdateGreenhouse{nullptr};
     SemaphoreHandle_t sUpdateDisplay{nullptr};

@@ -28,14 +28,19 @@ void Display::task_display(void *params) {
 void Display::display() {
     Logger::log("Initiated\n");
     mSSD1306.init();
-
+    print_init();
+    mSSD1306.show();
     while (true) {
+        xSemaphoreTake(iRTOS.sUpdateDisplay, portMAX_DELAY);
         mSSD1306.fill(0);
         update();
         mSSD1306.show();
         vTaskDelay(10); // some flickering can be witness without limits.
-        xSemaphoreTake(iRTOS.sUpdateDisplay, portMAX_DELAY);
     }
+}
+
+void Display::print_init() {
+    mSSD1306.text("Initializing...", 0, LINE_0_Y);
 }
 
 void Display::update() {
@@ -48,7 +53,7 @@ void Display::update() {
             mCO2TargetPending = mCO2TargetCurrent;
         } else {
             for (std::string &str: mNetworkStrings) str.clear();
-            mNetworkPhase = NEW_IP;
+            mNetworkPhase = NEW_API;
         }
     }
 
@@ -97,7 +102,11 @@ void Display::print_CO2_target() {
             ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetPending << "   ppm";
         }
     } else {
-        ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetCurrent << "   ppm";
+        if (pending) {
+            ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetPending << "   ppm";
+        } else {
+            ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetCurrent << "   ppm";
+        }
     }
     if (!pendingQempty) {
         if (pending)
@@ -174,7 +183,7 @@ void Display::print_network_base() {
     if (xQueuePeek(iRTOS.qNetworkPhase, &mNetworkPhase, 0) == pdFALSE) {
         Logger::log("ERROR: qNetworkPhase empty\n");
     } else {
-        if (prevPhase == NEW_PW && mNetworkPhase == NEW_IP) {
+        if (prevPhase == NEW_PW && mNetworkPhase == NEW_API) {
             for (std::string &str: mNetworkStrings) str.clear();
             print_status_base();
             print_CO2_target();
@@ -191,47 +200,19 @@ void Display::print_network_base() {
             mSSD1306.text("WiFi PW:", 0, LINE_4_Y);
         case NEW_SSID:
             mSSD1306.text("WiFi SSID:", 0, LINE_2_Y);
-        case NEW_IP:
-            mSSD1306.text("ThingSpeak IP:", 0, LINE_0_Y);
+        case NEW_API:
+            mSSD1306.text("ThingSpeak API:", 0, LINE_0_Y);
     }
-}
-
-void Display::print_network_pending_char() {
-    if (xQueuePeek(iRTOS.qCharPending, &mCharPending, 0) == pdFALSE) {
-        Logger::log("WARNING: qCharPending empty\n");
-    }
-
-    size_t str_len = mNetworkStrings[mNetworkPhase].length();
-    bool tooLong = str_len > MAX_OLED_STR_WIDTH - 1;
-    uint8_t line;
-
-    switch (mNetworkPhase) {
-        case NEW_IP:
-            line = LINE_1_Y;
-            break;
-        case NEW_SSID:
-            line = LINE_3_Y;
-            break;
-        case NEW_PW:
-            line = LINE_5_Y;
-            break;
-    }
-    mSSD1306.rect(tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
-                  line - 1, CHAR_WIDTH, CHAR_HEIGHT + 2, 1, true);
-    mSSD1306.text(&mCharPending,
-                  tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
-                  line * 1, 0);
 }
 
 void Display::print_network_input() {
-
-    if (xQueueReceive(iRTOS.qCharAction, &mCharAction, 0) == pdTRUE) {
-        if (mCharAction == bCHAR_INSERT) {
-            mNetworkStrings[mNetworkPhase] += mCharPending;
-        } else if (mCharAction == bCHAR_BACKSPACE) {
-            mNetworkStrings[mNetworkPhase].pop_back();
+    for (uint8_t str_i = 0; str_i < 3; ++str_i) {
+        char buf[MAX_STRING_LEN];
+        if (xQueuePeek(iRTOS.qNetworkStrings[str_i], buf, 0) == pdFALSE) {
+            Logger::log("WARNING: qNetworkStrings[%s] empty\n",
+                        (str_i == NEW_API ? "NEW_API" : str_i == NEW_SSID ? "NEW_SSID" : "NEW_PW"));
         }
-        mCharPending = INIT_CHAR;
+        mNetworkStrings[str_i] = buf;
     }
 
     bool tooLong;
@@ -252,14 +233,41 @@ void Display::print_network_input() {
                 cut_str.erase(0, cut_str.length() - (MAX_OLED_STR_WIDTH - 1));
             }
             mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_SSID], 0, LINE_3_Y);
-        case NEW_IP:
-            tooLong = mNetworkStrings[NEW_IP].length() >= MAX_OLED_STR_WIDTH;
+        case NEW_API:
+            tooLong = mNetworkStrings[NEW_API].length() >= MAX_OLED_STR_WIDTH;
             if (tooLong) {
-                cut_str = mNetworkStrings[NEW_IP];
+                cut_str = mNetworkStrings[NEW_API];
                 cut_str.erase(0, cut_str.length() - (MAX_OLED_STR_WIDTH - 1));
             }
-            mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_IP], 0, LINE_1_Y);
+            mSSD1306.text(tooLong ? cut_str : mNetworkStrings[NEW_API], 0, LINE_1_Y);
     }
+}
+
+void Display::print_network_pending_char() {
+    if (xQueuePeek(iRTOS.qCharPending, &mCharPending, 0) == pdFALSE) {
+        Logger::log("WARNING: qCharPending empty\n");
+    }
+
+    size_t str_len = mNetworkStrings[mNetworkPhase].length();
+    bool tooLong = str_len > MAX_OLED_STR_WIDTH - 1;
+    uint8_t line;
+
+    switch (mNetworkPhase) {
+        case NEW_API:
+            line = LINE_1_Y;
+            break;
+        case NEW_SSID:
+            line = LINE_3_Y;
+            break;
+        case NEW_PW:
+            line = LINE_5_Y;
+            break;
+    }
+    mSSD1306.rect(tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
+                  line - 1, CHAR_WIDTH, CHAR_HEIGHT + 2, 1, true);
+    mSSD1306.text(&mCharPending,
+                  tooLong ? 7 * (MAX_OLED_STR_WIDTH + 1) + 1 : str_len * CHAR_WIDTH,
+                  line * 1, 0);
 }
 
 void Display::print_connection() {

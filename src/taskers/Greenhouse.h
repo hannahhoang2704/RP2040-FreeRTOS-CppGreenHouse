@@ -22,16 +22,17 @@ class Greenhouse {
 public:
     Greenhouse(const std::shared_ptr<ModbusClient> &modbus_client, const std::shared_ptr<PicoI2C> &pressure_sensor_I2C, RTOS_infrastructure RTOSi);
 
-    static void notify(eNotifyAction eAction, uint32_t note);
 private:
     void automate_greenhouse();
     static void task_automate_greenhouse(void *params);
-    static void upkeep(TimerHandle_t xTimer);
+    static void passive_update(TimerHandle_t xTimer);
 
     void update_sensors();
     void actuate();
+    void emergency();
+    void pursue_CO2_target();
 
-    static TaskHandle_t mTaskHandle;
+    TaskHandle_t mTaskHandle;
     TimerHandle_t mTimerHandle;
     static uint64_t mPrevNotification;
 

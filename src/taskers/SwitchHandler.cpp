@@ -46,6 +46,7 @@ void SwitchHandler::task_switch_handler(void *params) {
 
 void SwitchHandler::switch_handler() {
     Logger::log("Initiated\n");
+    xQueueOverwrite(iRTOS.qState, &mState);
     if (xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent, pdMS_TO_TICKS(1000)) == pdFALSE) {
         Logger::log("WARNING: qCO2TargetCurrent empty\n", mCO2TargetCurrent);
     } else {
@@ -137,12 +138,15 @@ void SwitchHandler::state_toggle() {
     mState = mState == STATUS ? NETWORK : STATUS;
     if (mState == STATUS) {
         mCharPending = INIT_CHAR;
-        for (std::string &str: mNetworkStrings) str.clear();
-        mNetworkPhase = NEW_IP;
+        mNetworkPhase = NEW_API;
         xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
 
         Logger::log("[NETWORK => STATUS]\n");
     } else {
+        for (std::string &str: mNetworkStrings) str.clear();
+        xQueueOverwrite(iRTOS.qNetworkStrings[NEW_API], mNetworkStrings[NEW_API].c_str());
+        xQueueOverwrite(iRTOS.qNetworkStrings[NEW_SSID], mNetworkStrings[NEW_SSID].c_str());
+        xQueueOverwrite(iRTOS.qNetworkStrings[NEW_PW], mNetworkStrings[NEW_PW].c_str());
         Logger::log("[STATUS => NETWORK]\n");
     }
     xQueueOverwrite(iRTOS.qState, &mState);
@@ -163,12 +167,11 @@ void SwitchHandler::insert() {
         }
     } else {
         mNetworkStrings[mNetworkPhase] += mCharPending;
-        Logger::log("[NETWORK] IP[%s] UN[%s] PW[%s]\n",
-                    mNetworkStrings[NEW_IP].c_str(),
+        Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
+                    mNetworkStrings[NEW_API].c_str(),
                     mNetworkStrings[NEW_SSID].c_str(),
                     mNetworkStrings[NEW_PW].c_str());
-        mCharAction = bCHAR_INSERT;
-        xQueueOverwrite(iRTOS.qCharAction, &mCharAction);
+        xQueueOverwrite(iRTOS.qNetworkStrings[mNetworkPhase], mNetworkStrings[mNetworkPhase].c_str());
         mCharPending = INIT_CHAR;
         xSemaphoreGive(iRTOS.sUpdateDisplay);
     }
@@ -179,30 +182,34 @@ void SwitchHandler::insert() {
 void SwitchHandler::next_phase() {
     if (mState == NETWORK) {
         switch (mNetworkPhase) {
-            case NEW_IP:
-                Logger::log("[NETWORK] IP[%s] UN[%s] PW[%s]\n",
-                            mNetworkStrings[NEW_IP].c_str(),
+            case NEW_API:
+                Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
+                            mNetworkStrings[NEW_API].c_str(),
                             mNetworkStrings[NEW_SSID].c_str(),
                             mNetworkStrings[NEW_PW].c_str());
-                vTaskDelay(1);
                 mNetworkPhase = NEW_SSID;
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
                 break;
             case NEW_SSID:
-                Logger::log("[NETWORK] IP[%s] UN[%s] PW[%s]\n",
-                            mNetworkStrings[NEW_IP].c_str(),
+                Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
+                            mNetworkStrings[NEW_API].c_str(),
                             mNetworkStrings[NEW_SSID].c_str(),
                             mNetworkStrings[NEW_PW].c_str());
                 mNetworkPhase = NEW_PW;
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
                 break;
             case NEW_PW:
-                // TODO: order reconnection
+                Logger::log("[NETWORK] Connect with: API[%s] UN[%s] PW[%s]\n",
+                            mNetworkStrings[NEW_API].c_str(),
+                            mNetworkStrings[NEW_SSID].c_str(),
+                            mNetworkStrings[NEW_PW].c_str());
+
+                // TODO: send strings to ThingSpeaker + order reconnection
 
                 for (std::string &str: mNetworkStrings) str.clear();
 
                 mState = STATUS;
-                mNetworkPhase = NEW_IP;
+                mNetworkPhase = NEW_API;
                 xQueueOverwrite(iRTOS.qState, &mState);
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
                 break;
@@ -223,19 +230,19 @@ void SwitchHandler::backspace() {
         Logger::log("[STATUS] CO2 reset: %hu\n", mCO2TargetCurrent);
     } else {
         if (mNetworkStrings[mNetworkPhase].empty()) {
-            if (mNetworkPhase != NEW_IP) {
-                mNetworkPhase = mNetworkPhase == NEW_SSID ? NEW_IP : NEW_SSID;
+            if (mNetworkPhase != NEW_API) {
+                mNetworkPhase = mNetworkPhase == NEW_SSID ? NEW_API : NEW_SSID;
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
                 xSemaphoreGive(iRTOS.sUpdateDisplay);
             }
         } else {
             mNetworkStrings[mNetworkPhase].pop_back();
-            Logger::log("[NETWORK] IP[%s] UN[%s] PW[%s]\n",
-                        mNetworkStrings[NEW_IP].c_str(),
+            Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
+                        mNetworkStrings[NEW_API].c_str(),
                         mNetworkStrings[NEW_SSID].c_str(),
                         mNetworkStrings[NEW_PW].c_str());
-            mCharAction = bCHAR_BACKSPACE;
-            xQueueOverwrite(iRTOS.qCharAction, &mCharAction);
+
+            xQueueOverwrite(iRTOS.qNetworkStrings[mNetworkPhase], mNetworkStrings[mNetworkPhase].c_str());
             mCharPending = INIT_CHAR;
             xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
             xSemaphoreGive(iRTOS.sUpdateDisplay);

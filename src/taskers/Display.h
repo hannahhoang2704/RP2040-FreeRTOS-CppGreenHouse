@@ -20,6 +20,7 @@ private:
     void display();
     static void task_display(void *params);
 
+    void print_init();
     void update();
 
     void print_status_base();
@@ -67,8 +68,7 @@ private:
     float mHumidity{0};
     float mTemperature{0};
     char mCharPending{INIT_CHAR};
-    uint8_t mNetworkPhase{NEW_IP};
-    uint8_t mCharAction{bNONE};
+    uint8_t mNetworkPhase{NEW_API};
     uint8_t mConnectionState{bCONNECTING};
     std::vector<std::string> mNetworkStrings{"", "", ""};
 
