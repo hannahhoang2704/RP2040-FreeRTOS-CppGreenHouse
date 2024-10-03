@@ -66,7 +66,6 @@ void SwitchHandler::switch_handler() {
             } else {
                 button_event();
             }
-            Display::notify(eSetBits, mDisplayNote);
         }
         if (mLostEvents) {
             Logger::log("ERROR: %u sw events lost\n", mLostEvents);
@@ -90,17 +89,17 @@ void SwitchHandler::rot_event() {
                 if (mEvent == ROT_CLOCKWISE && mCO2TargetPending < CO2_MAX) {
                     mCO2TargetPending += CO2_INCREMENT;
                     xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
-                    mDisplayNote |= bCO2_TARGET;
+                    xSemaphoreGive(iRTOS.sUpdateDisplay);
                 } else if (mEvent == ROT_COUNTER_CLOCKWISE && mCO2TargetPending > CO2_MIN) {
                     mCO2TargetPending -= CO2_INCREMENT;
                     xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
-                    mDisplayNote |= bCO2_TARGET;
+                    xSemaphoreGive(iRTOS.sUpdateDisplay);
                 }
             } else {
                 if ((mEvent == ROT_CLOCKWISE && inc_pending_char()) ||
                     (mEvent == ROT_COUNTER_CLOCKWISE && dec_pending_char())) {
                     xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
-                    mDisplayNote |= bCHANGE_CHAR;
+                    xSemaphoreGive(iRTOS.sUpdateDisplay);
                 }
             }
         }
@@ -143,11 +142,13 @@ void SwitchHandler::state_toggle() {
         for (std::string &str: mNetworkStrings) str.clear();
         mNetworkPhase = NEW_IP;
         xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
+
         Logger::log("[NETWORK => STATUS]\n");
     } else {
         Logger::log("[STATUS => NETWORK]\n");
     }
-    mDisplayNote |= bSTATE;
+    xQueueOverwrite(iRTOS.qState, &mState);
+    xSemaphoreGive(iRTOS.sUpdateDisplay);
 }
 
 /// confirm rotated adjustment
@@ -159,7 +160,7 @@ void SwitchHandler::insert() {
             mCO2TargetCurrent = mCO2TargetPending;
             xQueueOverwrite(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent);
             xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
-            mDisplayNote |= bCO2_TARGET;
+            xSemaphoreGive(iRTOS.sUpdateDisplay);
             Logger::log("[STATUS] CO2 set: %hu\n", mCO2TargetCurrent);
         }
     } else {
@@ -168,8 +169,10 @@ void SwitchHandler::insert() {
                     mNetworkStrings[NEW_IP].c_str(),
                     mNetworkStrings[NEW_SSID].c_str(),
                     mNetworkStrings[NEW_PW].c_str());
+        mCharAction = bCHAR_INSERT;
+        xQueueOverwrite(iRTOS.qCharAction, &mCharAction);
         mCharPending = INIT_CHAR;
-        mDisplayNote |= bINSERT_CHAR;
+        xSemaphoreGive(iRTOS.sUpdateDisplay);
     }
 }
 
@@ -201,13 +204,12 @@ void SwitchHandler::next_phase() {
                 for (std::string &str: mNetworkStrings) str.clear();
 
                 mState = STATUS;
-                mDisplayNote |= bSTATE;
-
                 mNetworkPhase = NEW_IP;
+                xQueueOverwrite(iRTOS.qState, &mState);
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
                 break;
         }
-        mDisplayNote |= bNETWORK_PHASE;
+        xSemaphoreGive(iRTOS.sUpdateDisplay);
     }
 }
 
@@ -219,14 +221,14 @@ void SwitchHandler::backspace() {
     if (mState == STATUS) {
         mCO2TargetPending = mCO2TargetCurrent;
         xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
-        mDisplayNote |= bCO2_TARGET;
+        xSemaphoreGive(iRTOS.sUpdateDisplay);
         Logger::log("[STATUS] CO2 reset: %hu\n", mCO2TargetCurrent);
     } else {
         if (mNetworkStrings[mNetworkPhase].empty()) {
             if (mNetworkPhase != NEW_IP) {
                 mNetworkPhase = mNetworkPhase == NEW_SSID ? NEW_IP : NEW_SSID;
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
-                mDisplayNote |= bNETWORK_PHASE;
+                xSemaphoreGive(iRTOS.sUpdateDisplay);
             }
         } else {
             mNetworkStrings[mNetworkPhase].pop_back();
@@ -234,9 +236,11 @@ void SwitchHandler::backspace() {
                         mNetworkStrings[NEW_IP].c_str(),
                         mNetworkStrings[NEW_SSID].c_str(),
                         mNetworkStrings[NEW_PW].c_str());
-            vTaskDelay(1);
+            mCharAction = bCHAR_BACKSPACE;
+            xQueueOverwrite(iRTOS.qCharAction, &mCharAction);
             mCharPending = INIT_CHAR;
-            mDisplayNote |= bBACKSPACE;
+            xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
+            xSemaphoreGive(iRTOS.sUpdateDisplay);
         }
     }
     mPrevBackspace = time_us_64();

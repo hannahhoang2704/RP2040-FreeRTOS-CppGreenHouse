@@ -4,16 +4,6 @@
 
 using namespace std;
 
-TaskHandle_t Display::mTaskHandle{nullptr};
-uint64_t Display::mPrevNotification{0};
-
-void Display::notify(eNotifyAction eAction, uint32_t note) {
-    if (time_us_64() - mPrevNotification > TASK_NOTIFICATION_RATE_LIMIT_US) {
-        mPrevNotification = time_us_64();
-        xTaskNotify(mTaskHandle, note, eAction);
-    }
-}
-
 Display::Display(const shared_ptr<PicoI2C> &i2c_sp,
                  RTOS_infrastructure RTOSi) :
         mSSD1306(i2c_sp),
@@ -50,16 +40,20 @@ void Display::display() {
     mSSD1306.show();
 
     while (true) {
-        mNotification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        xSemaphoreTake(iRTOS.sUpdateDisplay, portMAX_DELAY);
         mSSD1306.fill(0);
         update();
         mSSD1306.show();
+        vTaskDelay(10); // some flickering can be witness without limits.
     }
 }
 
 void Display::update() {
-    if (mNotification & bSTATE) {
-        mState = mState == STATUS ? NETWORK : STATUS;
+    uint8_t prevState = mState;
+    if (xQueuePeek(iRTOS.qState, &mState, 0) == pdFALSE) {
+        Logger::log("WARNING: qState empty\n");
+    }
+    if (prevState != mState) {
         if (mState == STATUS) {
             mCO2TargetPending = mCO2TargetCurrent;
         } else {
@@ -77,9 +71,9 @@ void Display::update() {
         reprint_hum();
         reprint_temp();
     } else {
-        reprint_network_pending_char();
         print_network_base();
         reprint_network_input();
+        reprint_network_pending_char();
     }
 }
 
@@ -98,13 +92,11 @@ void Display::reprint_CO2_target() {
     ssValue.str("");
     bool pendingQempty = xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE;
     bool currentQempty = xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent, 0) == pdFALSE;
-    if (mNotification & bCO2_TARGET) {
-        if (pendingQempty) {
-            Logger::log("WARNING: qCO2TargetPending empty\n");
-        }
-        if (currentQempty) {
-            Logger::log("WARNING: qCO2TargetCurr empty\n");
-        }
+    if (pendingQempty) {
+        Logger::log("WARNING: qCO2TargetPending empty\n");
+    }
+    if (currentQempty) {
+        Logger::log("WARNING: qCO2TargetCurr empty\n");
     }
     bool pending = mCO2TargetPending != mCO2TargetCurrent;
     if (currentQempty) {
@@ -114,11 +106,7 @@ void Display::reprint_CO2_target() {
             ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetPending << "   ppm";
         }
     } else {
-        if (pendingQempty) {
-            ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetCurrent << "   ppm";
-        } else {
-            ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetPending << "   ppm";
-        }
+        ssValue << setw(STATUS_VALUE_W - 2) << mCO2TargetCurrent << "   ppm";
     }
     if (!pendingQempty) {
         if (pending)
@@ -131,9 +119,7 @@ void Display::reprint_CO2_target() {
 void Display::reprint_CO2_measurement() {
     ssValue.str("");
     if (xQueuePeek(iRTOS.qCO2Measurement, &mCO2Measurement, 0) == pdFALSE) {
-        if (mNotification & bCO2_MEASURE) {
-            Logger::log("WARNING: qCO2Measurement empty\n");
-        }
+        Logger::log("WARNING: qCO2Measurement empty\n");
         ssValue << setw(STATUS_VALUE_W) << "N/A";
     } else {
         ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mCO2Measurement;
@@ -145,9 +131,7 @@ void Display::reprint_CO2_measurement() {
 void Display::reprint_pressure() {
     ssValue.str("");
     if (xQueuePeek(iRTOS.qPressure, &mPressure, 0) == pdFALSE) {
-        if (mNotification & bPRESSURE) {
-            Logger::log("WARNING: qPressure empty\n");
-        }
+        Logger::log("WARNING: qPressure empty\n");
         ssValue << setw(STATUS_VALUE_W) << "N/A";
     } else {
         ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mPressure;
@@ -159,9 +143,7 @@ void Display::reprint_pressure() {
 void Display::reprint_fan() {
     ssValue.str("");
     if (xQueuePeek(iRTOS.qFan, &mFan, 0) == pdFALSE) {
-        if (mNotification & bFAN) {
-            Logger::log("WARNING: qFan empty\n");
-        }
+        Logger::log("WARNING: qFan empty\n");
         ssValue << setw(STATUS_VALUE_W) << "N/A";
     } else {
         ssValue << setw(STATUS_VALUE_W - 2) << mFan / 10 << "." << mFan % 10;
@@ -173,9 +155,7 @@ void Display::reprint_fan() {
 void Display::reprint_hum() {
     ssValue.str("");
     if (xQueuePeek(iRTOS.qHumidity, &mHumidity, 0) == pdFALSE) {
-        if (mNotification & bHUMIDITY) {
-            Logger::log("WARNING: qHumidity empty\n");
-        }
+        Logger::log("WARNING: qHumidity empty\n");
         ssValue << setw(STATUS_VALUE_W) << "N/A";
     } else {
         ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mHumidity;
@@ -187,9 +167,7 @@ void Display::reprint_hum() {
 void Display::reprint_temp() {
     ssValue.str("");
     if (xQueuePeek(iRTOS.qTemperature, &mTemperature, 0) == pdFALSE) {
-        if (mNotification & bTEMPERATURE) {
-            Logger::log("WARNING: qTemperature empty\n");
-        }
+        Logger::log("WARNING: qTemperature empty\n");
         ssValue << setw(STATUS_VALUE_W) << "N/A";
     } else {
         ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mTemperature;
@@ -201,22 +179,20 @@ void Display::reprint_temp() {
 /// NETWORK Screen
 
 void Display::print_network_base() {
-    if (mNotification & bNETWORK_PHASE) {
-        network_phase prevPhase = mNetworkPhase;
-        if (mNotification & bNETWORK_PHASE && xQueuePeek(iRTOS.qNetworkPhase, &mNetworkPhase, 0) == pdFALSE) {
-            Logger::log("ERROR: qNetworkPhase empty\n");
-        } else {
-            if (prevPhase == NEW_PW && mNetworkPhase == NEW_IP) {
-                for (std::string &str: mNetworkStrings) str.clear();
-                print_status_base();
-                reprint_CO2_target();
-                reprint_CO2_measurement();
-                reprint_pressure();
-                reprint_fan();
-                reprint_hum();
-                reprint_temp();
-                return;
-            }
+    uint8_t prevPhase = mNetworkPhase;
+    if (xQueuePeek(iRTOS.qNetworkPhase, &mNetworkPhase, 0) == pdFALSE) {
+        Logger::log("ERROR: qNetworkPhase empty\n");
+    } else {
+        if (prevPhase == NEW_PW && mNetworkPhase == NEW_IP) {
+            for (std::string &str: mNetworkStrings) str.clear();
+            print_status_base();
+            reprint_CO2_target();
+            reprint_CO2_measurement();
+            reprint_pressure();
+            reprint_fan();
+            reprint_hum();
+            reprint_temp();
+            return;
         }
     }
     switch (mNetworkPhase) {
@@ -230,29 +206,8 @@ void Display::print_network_base() {
 }
 
 void Display::reprint_network_pending_char() {
-    if (mNotification & (bCHANGE_CHAR | bINSERT_CHAR) && xQueuePeek(iRTOS.qCharPending, &mCharPending, 0) == pdFALSE) {
-        Logger::log("ERROR: qCharPending empty\n");
-    } else {
-        if (mNotification & bINSERT_CHAR) {
-            mNetworkStrings[mNetworkPhase] += mCharPending;
-            mCharPending = INIT_CHAR;
-        } else if (mNotification & bBACKSPACE) {
-            if (mNetworkStrings[mNetworkPhase].empty()) {
-                switch (mNetworkPhase) {
-                    case NEW_IP:
-                        break;
-                    case NEW_SSID:
-                        mNetworkPhase = NEW_IP;
-                        break;
-                    case NEW_PW:
-                        mNetworkPhase = NEW_PW;
-                        break;
-                }
-            } else {
-                mNetworkStrings[mNetworkPhase].pop_back();
-            }
-            mCharPending = INIT_CHAR;
-        }
+    if (xQueuePeek(iRTOS.qCharPending, &mCharPending, 0) == pdFALSE) {
+        Logger::log("WARNING: qCharPending empty\n");
     }
 
     size_t str_len = mNetworkStrings[mNetworkPhase].length();
@@ -284,6 +239,15 @@ void Display::reprint_network_pending_char() {
 }
 
 void Display::reprint_network_input() {
+
+    if (xQueueReceive(iRTOS.qCharAction, &mCharAction, 0) == pdTRUE) {
+        if (mCharAction == bCHAR_INSERT) {
+            mNetworkStrings[mNetworkPhase] += mCharPending;
+        } else if (mCharAction == bCHAR_BACKSPACE) {
+            mNetworkStrings[mNetworkPhase].pop_back();
+        }
+        mCharPending = INIT_CHAR;
+    }
 
     bool tooLong;
     std::string cut_str;

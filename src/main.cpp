@@ -59,9 +59,9 @@ int main() {
 
     /// RTOS infrastructure
     // for passing mutual RTOS infrastructure to requiring taskers
-    RTOS_infrastructure iRTOS {
-            //.qState = xQueueCreate(1, sizeof(program_state)),
-            .qNetworkPhase = xQueueCreate(1, sizeof(network_phase)),
+    const RTOS_infrastructure iRTOS {
+            .qState = xQueueCreate(1, sizeof(uint8_t)),
+            .qNetworkPhase = xQueueCreate(1, sizeof(uint8_t)),
             .qCO2TargetPending = xQueueCreate(1, sizeof(int16_t)),
             .qCO2TargetCurrent = xQueueCreate(1, sizeof(int16_t)),
             .qCO2Measurement = xQueueCreate(1, sizeof(float)),
@@ -69,9 +69,11 @@ int main() {
             .qFan = xQueueCreate(1, sizeof(int16_t)),
             .qHumidity = xQueueCreate(1, sizeof(float)),
             .qTemperature = xQueueCreate(1, sizeof(float)),
-            .qCharPending = xQueueCreate(2, sizeof(int16_t)),
+            .qCharPending = xQueueCreate(1, sizeof(char)),
+            .qCharAction = xQueueCreate(1, sizeof(uint8_t)),
 
-            .sUpdateGreenhouse = xSemaphoreCreateBinary()
+            .sUpdateGreenhouse = xSemaphoreCreateBinary(),
+            .sUpdateDisplay = xSemaphoreCreateBinary()
     };
 
     /// taskers

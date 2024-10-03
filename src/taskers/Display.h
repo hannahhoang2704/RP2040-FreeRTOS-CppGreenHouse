@@ -16,8 +16,6 @@ public:
     Display(const std::shared_ptr<PicoI2C> &i2c_sp,
             RTOS_infrastructure RTOSi);
 
-    static void notify(eNotifyAction eAction, uint32_t note);
-
 private:
     void display();
     static void task_display(void *params);
@@ -35,8 +33,7 @@ private:
     void reprint_network_input();
     void reprint_network_pending_char();
 
-    static TaskHandle_t mTaskHandle;
-    static uint64_t mPrevNotification;
+    TaskHandle_t mTaskHandle;
     ssd1306os mSSD1306;
 
     /// printing axioms
@@ -68,8 +65,7 @@ private:
     static const uint8_t CONNECTION_Y{57};
 
     /// program state data
-    uint32_t mNotification;
-    program_state mState{STATUS};
+    uint8_t mState{STATUS};
     int16_t mCO2TargetCurrent{0};
     int16_t mCO2TargetPending{0};
     float mCO2Measurement{0};
@@ -77,8 +73,9 @@ private:
     int16_t mFan{0};
     float mHumidity{0};
     float mTemperature{0};
-    char mCharPending{};
-    network_phase mNetworkPhase{NEW_IP};
+    char mCharPending{INIT_CHAR};
+    uint8_t mNetworkPhase{NEW_IP};
+    uint8_t mCharAction{bNONE};
     std::vector<std::string> mNetworkStrings{"", "", ""};
 
     std::stringstream ssValue;

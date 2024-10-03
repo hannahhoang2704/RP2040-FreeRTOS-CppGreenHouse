@@ -22,6 +22,12 @@ enum network_phase {
     NEW_PW
 };
 
+enum character_action {
+    bNONE = 0x0,
+    bCHAR_INSERT = 0x1,
+    bCHAR_BACKSPACE = 0x2
+};
+
 enum display_notifications {
     bSTATE          = 0x0001,
     bCO2_TARGET     = 0x0002,
@@ -38,7 +44,7 @@ enum display_notifications {
 };
 
 struct RTOS_infrastructure {
-    //QueueHandle_t qState{nullptr};
+    QueueHandle_t qState{nullptr};
     QueueHandle_t qNetworkPhase{nullptr};
     QueueHandle_t qCO2TargetPending{nullptr};
     QueueHandle_t qCO2TargetCurrent{nullptr};
@@ -48,8 +54,10 @@ struct RTOS_infrastructure {
     QueueHandle_t qHumidity{nullptr};
     QueueHandle_t qTemperature{nullptr};
     QueueHandle_t qCharPending{nullptr};
+    QueueHandle_t qCharAction{nullptr};
 
-    SemaphoreHandle_t sUpdateGreenhouse;
+    SemaphoreHandle_t sUpdateGreenhouse{nullptr};
+    SemaphoreHandle_t sUpdateDisplay{nullptr};
 };
 
 #endif //FREERTOS_GREENHOUSE_RTOS_INFRASTRUCTURE_H
