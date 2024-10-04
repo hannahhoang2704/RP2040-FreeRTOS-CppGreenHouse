@@ -25,16 +25,17 @@ Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client, const shar
     } else {
         Logger::log("Failed to create GREENHOUSE task.\n");
     }
-    mTimerHandle = xTimerCreate("GREENHOUSE_UPKEEP",
+    mTimerHandle = xTimerCreate("GREENHOUSE_UPDATE",
                                 pdMS_TO_TICKS(mTimerFreq),
                                 pdTRUE,
                                 iRTOS.sUpdateGreenhouse,
                                 Greenhouse::passive_update);
     if (mTimerHandle != nullptr) {
-        Logger::log("Created GREENHOUSE_UPKEEP timer\n");
+        Logger::log("Created GREENHOUSE_UPDATE timer\n");
     } else {
-        Logger::log("Failed to create GREENHOUSE_UPKEEP timer\n");
+        Logger::log("Failed to create GREENHOUSE_UPDATE timer\n");
     }
+
 }
 
 void Greenhouse::task_automate_greenhouse(void *params) {
@@ -51,7 +52,11 @@ void Greenhouse::automate_greenhouse() {
     mFan = aFan.read_power();
     xQueueOverwrite(iRTOS.qFan, &mFan);
     if (xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2Target, pdMS_TO_TICKS(1000)) == pdFALSE) {
-        Logger::log("WARNING: qCO2TargetCurrent empty\n");
+        Logger::log("WARNING: qCO2TargetCurrent empty; actuators off\n");
+        mFan = aFan.OFF;
+        aFan.set_power(mFan);
+        xQueueOverwrite(iRTOS.qFan, &mFan);
+        aCO2_Emitter.put_state(false);
     }
     xTimerStart(mTimerHandle, portMAX_DELAY);
     while (true) {
@@ -88,6 +93,9 @@ void Greenhouse::actuate() {
     }
     if (xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2Target, 0) == pdFALSE) {
         Logger::log("WARNING: qCO2TargetCurrent empty; actuators off\n");
+        aFan.set_power(aFan.OFF);
+        xQueueOverwrite(iRTOS.qFan, &mFan);
+        aCO2_Emitter.put_state(false);
     } else {
         pursue_CO2_target();
     }
@@ -105,18 +113,32 @@ void Greenhouse::emergency() {
     }
     Logger::log("EMERGENCY OVER: CO2 Measurement: %5.1f ppm\n");
     aFan.set_power(aFan.OFF);
+    xQueueOverwrite(iRTOS.qFan, &mFan);
 }
 
 void Greenhouse::pursue_CO2_target() {
     mCO2Delta = mCO2Measurement - static_cast<float>(mCO2Target);
+    if (abs(mCO2Delta) > CO2_DELTA_MARGIN) {
+        if (!mPursuingCO2Target) {
+            mPursuingCO2Target = true;
+            xTimerChangePeriod(mTimerHandle, PURSUING_TIMER_FREQ_MS, portMAX_DELAY);
+        }
+
+    } else {
+        mPursuingCO2Target = false;
+    }
+
     if (mCO2Delta > CO2_DELTA_MARGIN) {
-        mCO2OnTarget = false;
-        aFan.set_power(200);
+        Logger::log("Pursuing CO2Target: [%hd] mCO2Measurement [%.1f]\n", mCO2Target, mCO2Measurement);
+        mPursuingCO2Target = false;
+        mFan = 200;
+        aFan.set_power(mFan);
+        xQueueOverwrite(iRTOS.qFan, &mFan);
     } else if (mCO2Delta < -CO2_DELTA_MARGIN) {
-        mCO2OnTarget = false;
+        mPursuingCO2Target = false;
         aCO2_Emitter.put_state(true);
-    } else if (!mCO2OnTarget) {
-        mCO2OnTarget = true;
+    } else if (!mPursuingCO2Target) {
+        mPursuingCO2Target = true;
         aFan.set_power(aFan.OFF);
         aCO2_Emitter.put_state(false);
     }

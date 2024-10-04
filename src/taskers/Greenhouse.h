@@ -37,6 +37,7 @@ private:
     static uint64_t mPrevNotification;
 
     const uint DEFAULT_TIMER_FREQ_MS{1000};
+    const uint PURSUING_TIMER_FREQ_MS{200};
     uint mTimerFreq{DEFAULT_TIMER_FREQ_MS};
 
     Sensor::CO2 sCO2;
@@ -55,9 +56,10 @@ private:
     const float UPDATE_THRESHOLD{1};
 
     const float CO2_FATAL{2000};
-    const float CO2_DELTA_MARGIN{100};
+    const float CO2_DELTA_MARGIN{50};
     float mCO2Delta{0};
-    bool mCO2OnTarget{true};
+    bool mPursuingCO2Target{false};
+
 
 
     RTOS_infrastructure iRTOS;

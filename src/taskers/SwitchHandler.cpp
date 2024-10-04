@@ -163,6 +163,7 @@ void SwitchHandler::insert() {
             xQueueOverwrite(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent);
             xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
             xSemaphoreGive(iRTOS.sUpdateDisplay);
+            xSemaphoreGive(iRTOS.sUpdateGreenhouse);
             Logger::log("[STATUS] CO2 set: %hu\n", mCO2TargetCurrent);
         }
     } else {
@@ -173,6 +174,7 @@ void SwitchHandler::insert() {
                     mNetworkStrings[NEW_PW].c_str());
         xQueueOverwrite(iRTOS.qNetworkStrings[mNetworkPhase], mNetworkStrings[mNetworkPhase].c_str());
         mCharPending = INIT_CHAR;
+        xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
         xSemaphoreGive(iRTOS.sUpdateDisplay);
     }
 }
@@ -180,7 +182,14 @@ void SwitchHandler::insert() {
 /// confirm a series of confirmed rotated adjustments
 // applies only (?) in relog state when confirming string, moving then on to the next phase
 void SwitchHandler::next_phase() {
-    if (mState == NETWORK) {
+    if (mState == STATUS) {
+        // Sets CO2 target to "N/A", thus halting any and all actuator behaviour.
+        // "Panic button": stop all actuators.
+        Logger::log("Omitting CO2Target\n");
+        xQueueReceive(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent, 0);
+        xSemaphoreGive(iRTOS.sUpdateDisplay);
+        xSemaphoreGive(iRTOS.sUpdateGreenhouse);
+    } else {
         switch (mNetworkPhase) {
             case NEW_API:
                 Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
