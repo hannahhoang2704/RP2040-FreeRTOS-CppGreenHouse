@@ -34,22 +34,22 @@ void EEPROM::put(uint16_t address, uint16_t number){
     write_to_eeprom(address, data, 2 + CRC_CHAR);
 }
 
-uint16_t EEPROM::get(uint16_t address) {
+bool EEPROM::get(uint16_t address, uint16_t &val){
     uint8_t data[2 + CRC_CHAR];
     read_from_eeprom(address, data, 2 + CRC_CHAR);
     uint16_t crc = crc16(data, 2);
     uint16_t read_crc = (static_cast<uint16_t>(data[2]) << 8) | data[3];
     if(crc!= read_crc){
         Logger::log("Fail to get number from EEPROM\n");
-        return 1;
+        return false;
     }
-    uint16_t number = (static_cast<uint16_t>(data[0]) << 8) | data[1];
-    return number;
+    val = (static_cast<uint16_t>(data[0]) << 8) | data[1];
+    return true;
 }
 
 void EEPROM::put(uint16_t address, const std::string& str) {
     const char* str_ = str.c_str();
-    size_t string_length = strlen(str_) + 1; //include NULL terminator
+    size_t string_length = strlen(str_) + 1;
     if (string_length > STRLEN_EEPROM) {
         string_length = STRLEN_EEPROM;
     }
@@ -64,7 +64,7 @@ void EEPROM::put(uint16_t address, const std::string& str) {
     write_to_eeprom(address, data_str, ENTRY_SIZE);
 }
 
-std::string EEPROM::get_str(uint16_t address) {
+bool EEPROM::get_str(uint16_t address, std::string &out_str){
     uint8_t read_buff[ENTRY_SIZE];
     read_from_eeprom(address, (uint8_t *) &read_buff, ENTRY_SIZE);
     int term_zero_index = 0;
@@ -72,12 +72,13 @@ std::string EEPROM::get_str(uint16_t address) {
         term_zero_index++;
     }
     if (read_buff[0] != 0 && crc16(read_buff, (term_zero_index + 3)) == 0 && term_zero_index < (ENTRY_SIZE - 2)) {
-        std::string log_str(reinterpret_cast<char*>(read_buff), term_zero_index);
-        Logger::log("%s\n", log_str.c_str());
-        return log_str;
+        out_str = std::string(reinterpret_cast<char*>(read_buff), term_zero_index);
+//        Logger::log("%s\n", out_str.c_str());
+        return true;
     }else{
+        out_str.clear();
         Logger::log("crc failed, return empty string\n");
-        return "";
+        return false;
     }
 }
 
@@ -108,7 +109,7 @@ void EEPROM::put_log_entry(const char *str) {
     log_buf[strlen(str)] = '\0';
     uint16_t crc = crc16(log_buf, string_length);
     log_buf[string_length] = (uint8_t)(crc >> BITS_PER_BYTE);
-    log_buf[string_length + 1] = (uint8_t)crc;         //check again the size length
+    log_buf[string_length + 1] = (uint8_t)crc;
 
     uint16_t write_address = (uint16_t) EEPROM::LOG_FIRST_ADDR + (log_index * (uint16_t) ENTRY_SIZE);
     if (write_address < (uint16_t)EEPROM::LOG_FIRST_ADDR + ((uint16_t)ENTRY_SIZE * (uint16_t) MAX_ENTRIES)) {
@@ -152,6 +153,13 @@ void EEPROM::erase_logs() {
     put(EEPROM::LOG_INDEX_ADDR, log_index);
 }
 
-void EEPROM::set_log_index_value(const uint16_t idx) {
-    log_index = idx;
+void EEPROM::set_log_index_value() {
+    uint16_t index;
+    if(get(EEPROM::LOG_INDEX_ADDR, index) && index <= MAX_ENTRIES && index >= 0){
+        Logger::log("index get in eeprom is %u\n", index);
+        log_index = index;
+        Logger::log("log index get in eeprom is %u\n", log_index);
+    }else{
+        log_index = 0;
+    }
 }

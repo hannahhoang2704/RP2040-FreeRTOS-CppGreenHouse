@@ -4,7 +4,6 @@
 #include <memory>
 #include "i2c/PicoI2C.h"
 
-//static uint16_t nextFreeAddress{0};
 
 class EEPROM{
 public:
@@ -24,14 +23,14 @@ public:
 
     void put(uint16_t address, uint16_t number);
     void put(uint16_t address, const std::string& str);
-    uint16_t get(uint16_t address);
-    std::string get_str(uint16_t address);
-    uint16_t log_index;
-
+    bool get(uint16_t address, uint16_t &val);
+    bool get_str(uint16_t address, std::string &out_str);
     void put_log_entry(const char *str);
     void get_log_entry();
     void erase_logs();
-    void set_log_index_value(const uint16_t idx);
+    void set_log_index_value();
+
+    uint16_t log_index;
 private:
     static const uint8_t AT24C256_DEV_ADDRESS{0x50};
     static const uint8_t BITS_PER_BYTE{8};
@@ -47,6 +46,7 @@ private:
     std::shared_ptr<PicoI2C> mI2C;
     uint8_t mDevAddr;
     uint8_t mBuffer[STRLEN_EEPROM + REG_ADDR_LEN];
+//    uint16_t log_index;
 
 };
 #endif //FREERTOS_GREENHOUSE_EEPROM_H
