@@ -46,46 +46,42 @@ void Storage::storage() {
         xQueueOverwrite(iRTOS.qNetworkStrings[NEW_SSID], stored_ssid.c_str());
     }
 
-    while (true) {
-        if(xQueueReceive(iRTOS.qStorageQueue, &storageData, portMAX_DELAY) == pdTRUE){
-            switch(storageData){
-                case CO2_target:
-                    if(xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2Target, 0) == pdTRUE){
-                        Logger::log("new CO2 target %u will be stored in EEPROM\n", mCO2Target);
-                        mEEPROM.put(EEPROM::CO2_TARGET_ADDR, (uint16_t)mCO2Target);
-                    }else{
-                        Logger::log("CO2 target queue is empty\n");
-                    }
-                    break;
-                case API_str:
-                    if(xQueuePeek(iRTOS.qNetworkStrings[NEW_API], &mAPI, 0) == pdTRUE) {
-                        Logger::log("new API %s will be stored in EEPROM\n", mAPI);
-                        mEEPROM.put(EEPROM::API_ADDR, mAPI);
-                    }else{
-                        Logger::log("API queue is empty\n");
-                    }
-                    break;
-                case PW_str:
-                    if(xQueuePeek(iRTOS.qNetworkStrings[NEW_PW], &mPW, 0) == pdTRUE) {
-                        Logger::log("new PW %s will be stored in EEPROM\n", mPW);
-                        mEEPROM.put(EEPROM::PW_ADDR, mPW);
-                    }else{
-                        Logger::log("PW queue is empty\n");
-                    }
-                    break;
-                case SSID_str:
-                    if(xQueuePeek(iRTOS.qNetworkStrings[NEW_SSID], &mSSID, 0) == pdTRUE) {
-                        Logger::log("new SSID %s will be stored in EEPROM\n", mSSID);
-                        mEEPROM.put(EEPROM::USERNAME_ADDR, mSSID);
-                    }else{
-                        Logger::log("SSID queue is empty\n");
-                    }
-                    break;
-                default:
-                    Logger::log("Unknown storage data\n");
-            }
-        }else{
-            vTaskDelay(pdMS_TO_TICKS(100));
+    while((xQueueReceive(iRTOS.qStorageQueue, &storageData, portMAX_DELAY) == pdTRUE)){
+        switch(storageData){
+            case CO2_target:
+                if(xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2Target, 0) == pdTRUE){
+                    Logger::log("new CO2 target %u will be stored in EEPROM\n", mCO2Target);
+                    mEEPROM.put(EEPROM::CO2_TARGET_ADDR, (uint16_t)mCO2Target);
+                }else{
+                    Logger::log("CO2 target queue is empty\n");
+                }
+                break;
+            case API_str:
+                if(xQueuePeek(iRTOS.qNetworkStrings[NEW_API], &mAPI, 0) == pdTRUE) {
+                    Logger::log("new API %s will be stored in EEPROM\n", mAPI);
+                    mEEPROM.put(EEPROM::API_ADDR, mAPI);
+                }else{
+                    Logger::log("API queue is empty\n");
+                }
+                break;
+            case PW_str:
+                if(xQueuePeek(iRTOS.qNetworkStrings[NEW_PW], &mPW, 0) == pdTRUE) {
+                    Logger::log("new PW %s will be stored in EEPROM\n", mPW);
+                    mEEPROM.put(EEPROM::PW_ADDR, mPW);
+                }else{
+                    Logger::log("PW queue is empty\n");
+                }
+                break;
+            case SSID_str:
+                if(xQueuePeek(iRTOS.qNetworkStrings[NEW_SSID], &mSSID, 0) == pdTRUE) {
+                    Logger::log("new SSID %s will be stored in EEPROM\n", mSSID);
+                    mEEPROM.put(EEPROM::USERNAME_ADDR, mSSID);
+                }else{
+                    Logger::log("SSID queue is empty\n");
+                }
+                break;
+            default:
+                Logger::log("Unknown storage data\n");
         }
     }
 }
