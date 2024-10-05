@@ -89,14 +89,15 @@ private:
     uint32_t mDisplayNote;
 
     /// state data
+    const int16_t CO2_INCREMENT{1};
     static const int16_t CO2_MAX{1500};
     static const int16_t CO2_MIN{0};
 
-    program_state mState{STATUS};
+    uint8_t mState{STATUS};
     int16_t mCO2TargetCurrent{0};
     int16_t mCO2TargetPending{mCO2TargetCurrent};
     char mCharPending{INIT_CHAR};
-    network_phase mNetworkPhase{NEW_IP};
+    uint8_t mNetworkPhase{NEW_API};
     std::vector<std::string> mNetworkStrings{"", "", ""};
 
     /// RTOS infrastructure

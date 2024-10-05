@@ -52,29 +52,37 @@ int main() {
 
     /// interfaces
     auto CLI_UART = make_shared<PicoOsUart>(UART0_s.ctrl_nr, UART0_s.tx_pin, UART0_s.rx_pin, UART0_s.baud,UART0_s.stop_bits);
-    auto modbusUART = make_shared<PicoOsUart>(UART1_s.ctrl_nr, UART1_s.tx_pin, UART1_s.rx_pin,UART1_s.baud,UART1_s.stop_bits);
+    auto modbusUART = make_shared<PicoOsUart>(UART1_s.ctrl_nr, UART1_s.tx_pin, UART1_s.rx_pin, UART1_s.baud,UART1_s.stop_bits);
     auto OLED_SDP600_I2C = make_shared<PicoI2C>(I2C1_s.ctrl_nr, I2C1_s.baud);
     auto rtu_client = make_shared<ModbusClient>(modbusUART);
 
-
     /// RTOS infrastructure
     // for passing mutual RTOS infrastructure to requiring taskers
-    RTOS_infrastructure iRTOS {
-            //.qState = xQueueCreate(1, sizeof(program_state)),
-            .qNetworkPhase = xQueueCreate(1, sizeof(network_phase)),
-            .qCO2TargetPending = xQueueCreate(1, sizeof(int16_t)),
-            .qCO2TargetCurrent = xQueueCreate(1, sizeof(int16_t)),
-            .qCO2Measurement = xQueueCreate(1, sizeof(float)),
-            .qPressure = xQueueCreate(1, sizeof(float)),
-            .qFan = xQueueCreate(1, sizeof(int16_t)),
-            .qHumidity = xQueueCreate(1, sizeof(float)),
-            .qTemperature = xQueueCreate(1, sizeof(float)),
-            .qCharPending = xQueueCreate(1, sizeof(int16_t))
+    const RTOS_infrastructure iRTOS{
+            .qState             = xQueueCreate(1, sizeof(uint8_t)),
+            .qNetworkPhase      = xQueueCreate(1, sizeof(uint8_t)),
+            .qCO2TargetPending  = xQueueCreate(1, sizeof(int16_t)),
+            .qCO2TargetCurrent  = xQueueCreate(1, sizeof(int16_t)),
+            .qCO2Measurement    = xQueueCreate(1, sizeof(float)),
+            .qPressure          = xQueueCreate(1, sizeof(float)),
+            .qFan               = xQueueCreate(1, sizeof(int16_t)),
+            .qHumidity          = xQueueCreate(1, sizeof(float)),
+            .qTemperature       = xQueueCreate(1, sizeof(float)),
+            .qCharPending       = xQueueCreate(1, sizeof(char)),
+            .qConnectionState   = xQueueCreate(1, sizeof(uint8_t)),
+            .qNetworkStrings = {
+                    [NEW_API]   = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
+                    [NEW_SSID]  = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
+                    [NEW_PW]    = xQueueCreate(1, sizeof(char[MAX_STRING_LEN]))
+            },
+
+            .sUpdateGreenhouse = xSemaphoreCreateBinary(),
+            .sUpdateDisplay = xSemaphoreCreateBinary()
     };
 
     /// taskers
     new Display(OLED_SDP600_I2C, iRTOS);
-    new Greenhouse(rtu_client, OLED_SDP600_I2C);
+    new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
     new Logger(CLI_UART);
     new SwitchHandler(iRTOS);
 
