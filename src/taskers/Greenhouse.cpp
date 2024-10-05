@@ -63,7 +63,6 @@ void Greenhouse::automate_greenhouse() {
         update_sensors();
         actuate();
         xSemaphoreTake(iRTOS.sUpdateGreenhouse, portMAX_DELAY);
-        //vTaskDelay(pdMS_TO_TICKS(10)); //I think we need vTaskDelay here to give time for other task even though greenhouse is still highest priority
     }
 }
 

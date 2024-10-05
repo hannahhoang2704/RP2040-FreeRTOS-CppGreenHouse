@@ -69,8 +69,6 @@ void SwitchHandler::switch_handler() {
         if (mLostEvents) {
             Logger::log("ERROR: %u sw events lost\n", mLostEvents);
             mLostEvents = 0;
-        }else{
-            vTaskDelay(pdMS_TO_TICKS(10)); //need some delay to avoid this task is always busy m
         }
     }
 }

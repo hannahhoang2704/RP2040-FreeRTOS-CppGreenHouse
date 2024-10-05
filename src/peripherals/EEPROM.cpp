@@ -173,9 +173,8 @@ void EEPROM::erase_logs() {
 void EEPROM::set_log_index_value() {
     uint16_t index;
     if(get(EEPROM::LOG_INDEX_ADDR, index) && index <= MAX_ENTRIES && index >= 0){
-        Logger::log("index get in eeprom is %u\n", index);
         log_index = index;
-        Logger::log("log index get in eeprom is %u\n", log_index);
+        Logger::log("log index get from eeprom is %u\n", log_index);
     }else{
         log_index = 0;
     }

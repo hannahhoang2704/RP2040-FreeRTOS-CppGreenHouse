@@ -24,7 +24,7 @@ void Storage::task_storage(void *params) {
 void Storage::storage() {
     mEEPROM.set_log_index_value();
     if(mEEPROM.get(EEPROM::CO2_TARGET_ADDR, mCO2Target)){
-        Logger::log("Stored CO2 target is %u\n", mCO2Target);
+        Logger::log("Stored CO2 target is %d\n", mCO2Target);
         if(mCO2Target >= CO2_MIN && mCO2Target <= CO2_MAX){
             xQueueOverwrite(iRTOS.qCO2TargetCurrent, &mCO2Target);
         }
@@ -84,7 +84,8 @@ void Storage::storage() {
                 default:
                     Logger::log("Unknown storage data\n");
             }
+        }else{
+            vTaskDelay(pdMS_TO_TICKS(100));
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }

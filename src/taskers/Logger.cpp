@@ -75,8 +75,6 @@ void Logger::run() {
         if (mLost_Log_event > 0) {
             Logger::log("errQUEUE_FULL: Lost %u logs\n", mLost_Log_event);
             Logger::mLost_Log_event = 0;
-        }else{
-            vTaskDelay(pdMS_TO_TICKS(100));
         }
     }
 }
