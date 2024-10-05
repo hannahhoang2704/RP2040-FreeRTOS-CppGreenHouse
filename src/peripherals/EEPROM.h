@@ -15,7 +15,7 @@ public:
     enum eeprom_addr{
         LOG_INDEX_ADDR = FIRST_ADDR  + ENTRY_SIZE * 0,
         CO2_TARGET_ADDR = FIRST_ADDR + ENTRY_SIZE * 1,
-        IP_ADDR = FIRST_ADDR + ENTRY_SIZE * 2,
+        API_ADDR = FIRST_ADDR + ENTRY_SIZE * 2,
         USERNAME_ADDR = FIRST_ADDR + ENTRY_SIZE * 3,
         PW_ADDR = FIRST_ADDR + ENTRY_SIZE * 4,
         LOG_FIRST_ADDR = FIRST_ADDR + ENTRY_SIZE * 5
@@ -23,6 +23,9 @@ public:
 
     void put(uint16_t address, uint16_t number);
     void put(uint16_t address, const std::string& str);
+    void put(uint16_t address, const char *str);
+    void put(uint16_t address, int16_t number);
+    bool get(uint16_t address, int16_t &val);
     bool get(uint16_t address, uint16_t &val);
     bool get_str(uint16_t address, std::string &out_str);
     void put_log_entry(const char *str);

@@ -78,6 +78,7 @@ int main() {
                     [NEW_SSID]  = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
                     [NEW_PW]    = xQueueCreate(1, sizeof(char[MAX_STRING_LEN]))
             },
+            .qStorageQueue = xQueueCreate(5, sizeof(storage_data)), ////
 
             .sUpdateGreenhouse = xSemaphoreCreateBinary(),
             .sUpdateDisplay = xSemaphoreCreateBinary()

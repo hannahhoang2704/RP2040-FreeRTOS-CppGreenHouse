@@ -7,6 +7,7 @@
 
 
 #include <memory>
+#include <string>
 #include "i2c/PicoI2C.h"
 #include "queue.h"
 #include "EEPROM.h"
@@ -22,5 +23,10 @@ private:
     EEPROM mEEPROM;
     TaskHandle_t mTaskHandle;
     RTOS_infrastructure iRTOS;
+    storage_data storageData;
+    int16_t mCO2Target;
+    char mAPI[MAX_STRING_LEN];
+    char mPW[MAX_STRING_LEN];
+    char mSSID[MAX_STRING_LEN];
 };
 #endif //FREERTOS_GREENHOUSE_STORAGE_H

@@ -23,56 +23,68 @@ void Storage::task_storage(void *params) {
 
 void Storage::storage() {
     mEEPROM.set_log_index_value();
-
-    uint16_t stored_co2_target;
-    if(mEEPROM.get(EEPROM::CO2_TARGET_ADDR, stored_co2_target)){
-        Logger::log("Stored CO2 target is %u\n", stored_co2_target);
-        if(stored_co2_target >= CO2_MIN && stored_co2_target <= CO2_MAX){
-            xQueueOverwrite(iRTOS.qCO2TargetCurrent, &stored_co2_target);
+    if(mEEPROM.get(EEPROM::CO2_TARGET_ADDR, mCO2Target)){
+        Logger::log("Stored CO2 target is %u\n", mCO2Target);
+        if(mCO2Target >= CO2_MIN && mCO2Target <= CO2_MAX){
+            xQueueOverwrite(iRTOS.qCO2TargetCurrent, &mCO2Target);
         }
     }
 
-    std::string stored_ip;
+    std::string stored_api;
     std::string stored_pw;
     std::string stored_ssid;
-    if(mEEPROM.get_str(EEPROM::IP_ADDR, stored_ip)){
-        Logger::log("IP is stored in eeprom is %s\n", stored_ip.c_str());
+    if(mEEPROM.get_str(EEPROM::API_ADDR, stored_api)){
+        Logger::log("IP is stored in eeprom is %s\n", stored_api.c_str());
+        xQueueOverwrite(iRTOS.qNetworkStrings[NEW_API], stored_api.c_str());
     }
     if(mEEPROM.get_str(EEPROM::PW_ADDR, stored_pw)){
         Logger::log("PW is stored in eeprom is %s\n", stored_pw.c_str());
+        xQueueOverwrite(iRTOS.qNetworkStrings[NEW_PW], stored_pw.c_str());
     }
     if(mEEPROM.get_str(EEPROM::USERNAME_ADDR, stored_ssid)){
-        Logger::log("PW is stored in eeprom is %s\n", stored_ssid.c_str());
+        Logger::log("SSID is stored in eeprom is %s\n", stored_ssid.c_str());
+        xQueueOverwrite(iRTOS.qNetworkStrings[NEW_SSID], stored_ssid.c_str());
     }
 
-
-
-    // below is just to test the eeprom storage
-//    std::string pw = "pw2024";
-    std::string second_str = "usernameIoTabced";
-//    std::string ip = "192.168.10.10";
-//
-//    mEEPROM.put(EEPROM::PW_ADDR, pw);
-//    mEEPROM.put(EEPROM::USERNAME_ADDR, second_str);
-//    mEEPROM.put(EEPROM::IP_ADDR, ip);
-//
-//    std::string stored_ip_addr;
-//    mEEPROM.get_str(EEPROM::IP_ADDR, stored_ip_addr);
-
-//    std::string pw_from_storage = mEEPROM.get_str(EEPROM::PW_ADDR);
-//    Logger::log("pw get from storage is %s\n", pw_from_storage.c_str());
-//    std::string usrname = mEEPROM.get_str(EEPROM::USERNAME_ADDR);
-//    Logger::log("usrname get from storage is %s\n", usrname.c_str());
-//    std::string ip_addr = mEEPROM.get_str(EEPROM::IP_ADDR);
-//    Logger::log("ip addr get from storage is %s\n", ip_addr.c_str());
-
-//    mEEPROM.put_log_entry(pw.c_str());
-    mEEPROM.put_log_entry(second_str.c_str());
-    mEEPROM.put_log_entry(second_str.c_str());
-
-    mEEPROM.get_log_entry();
-
     while (true) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        if(xQueueReceive(iRTOS.qStorageQueue, &storageData, portMAX_DELAY) == pdTRUE){
+            switch(storageData){
+                case CO2_target:
+                    if(xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2Target, 0) == pdTRUE){
+                        Logger::log("new CO2 target %u will be stored in EEPROM\n", mCO2Target);
+                        mEEPROM.put(EEPROM::CO2_TARGET_ADDR, (uint16_t)mCO2Target);
+                    }else{
+                        Logger::log("CO2 target queue is empty\n");
+                    }
+                    break;
+                case API_str:
+                    if(xQueuePeek(iRTOS.qNetworkStrings[NEW_API], &mAPI, 0) == pdTRUE) {
+                        Logger::log("new API %s will be stored in EEPROM\n", mAPI);
+                        mEEPROM.put(EEPROM::API_ADDR, mAPI);
+                    }else{
+                        Logger::log("API queue is empty\n");
+                    }
+                    break;
+                case PW_str:
+                    if(xQueuePeek(iRTOS.qNetworkStrings[NEW_PW], &mPW, 0) == pdTRUE) {
+                        Logger::log("new PW %s will be stored in EEPROM\n", mPW);
+                        mEEPROM.put(EEPROM::PW_ADDR, mPW);
+                    }else{
+                        Logger::log("PW queue is empty\n");
+                    }
+                    break;
+                case SSID_str:
+                    if(xQueuePeek(iRTOS.qNetworkStrings[NEW_SSID], &mSSID, 0) == pdTRUE) {
+                        Logger::log("new SSID %s will be stored in EEPROM\n", mSSID);
+                        mEEPROM.put(EEPROM::USERNAME_ADDR, mSSID);
+                    }else{
+                        Logger::log("SSID queue is empty\n");
+                    }
+                    break;
+                default:
+                    Logger::log("Unknown storage data\n");
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }

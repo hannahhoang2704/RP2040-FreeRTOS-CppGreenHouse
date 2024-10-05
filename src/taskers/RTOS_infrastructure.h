@@ -7,8 +7,8 @@
 // RTOS task notifications require breathing room
 // OLED gets crazy if events are sent too frequently -- i.e. with Rotor
 static const uint64_t TASK_NOTIFICATION_RATE_LIMIT_US{35000};
-static const int16_t CO2_MAX{1500};
-static const int16_t CO2_MIN{0};
+const int16_t CO2_MAX{1500};
+const int16_t CO2_MIN{0};
 const char INIT_CHAR{'.'};
 const char MAX_STRING_LEN{64};
 
@@ -29,6 +29,13 @@ enum connection_state {
     bNOT_CONNECTED
 };
 
+enum storage_data {
+    CO2_target,
+    API_str,
+    SSID_str,
+    PW_str
+};
+
 struct RTOS_infrastructure {
     QueueHandle_t qState{nullptr};
     QueueHandle_t qNetworkPhase{nullptr};
@@ -44,6 +51,7 @@ struct RTOS_infrastructure {
     QueueHandle_t qNetworkStrings[3] {[NEW_API] = nullptr,
                                       [NEW_SSID] = nullptr,
                                       [NEW_PW] = nullptr};
+    QueueHandle_t qStorageQueue{nullptr};
 
     SemaphoreHandle_t sUpdateGreenhouse{nullptr};
     SemaphoreHandle_t sUpdateDisplay{nullptr};
