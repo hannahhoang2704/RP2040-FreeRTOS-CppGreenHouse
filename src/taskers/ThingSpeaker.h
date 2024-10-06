@@ -7,11 +7,12 @@
 #include "task.h"
 #include "IPStack.h"
 #include "timers.h"
-#include "tls_common.c"
 #include <mbedtls/debug.h>
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
 #include "RTOS_infrastructure.h"
+
+
 #define TLS_CLIENT_SERVER        "api.thingspeak.com"
 #define TLS_CLIENT_HTTP_REQUEST  "POST talkbacks/53302/commands/execute.json?api_key=LGSSKNARG3LPLX6R\r\n" \
                                  "Host: " TLS_CLIENT_SERVER "\r\n" \
@@ -21,6 +22,7 @@
 
 extern "C" {
 #include "tls_common.h"
+#include "lwip/altcp.h"
 }
 
 
@@ -35,6 +37,7 @@ private:
     static void task_speak(void *params);
     static void send_data_callback(TimerHandle_t xTimer);
     static void receive_data_callback(TimerHandle_t xTimer);
+
     void execute_notifications();
     void connect_http();
     void send_data();
@@ -69,7 +72,7 @@ private:
     static const uint32_t SEND_DATA_TIMER_FREQ{15000};
     static const uint32_t RECEIVE_DATA_TIMER_FREQ{5000};
 
-    uint32_t mNotification{0};
+    EventBits_t mEvents;
 
     int16_t mCO2Target{0};
     float mCO2Measurement{0};
@@ -79,6 +82,8 @@ private:
     float mTemperature{0};
 
     TLS_CLIENT_T_ *mTLSClient;
+
+    err_t mErr;
 };
 
 

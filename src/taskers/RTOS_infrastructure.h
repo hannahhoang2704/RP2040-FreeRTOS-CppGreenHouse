@@ -7,11 +7,10 @@
 #include "event_groups.h"
 // RTOS task notifications require breathing room
 // OLED gets crazy if events are sent too frequently -- i.e. with Rotor
-static const uint64_t TASK_NOTIFICATION_RATE_LIMIT_US{35000};
-const int16_t CO2_MAX{1500};
-const int16_t CO2_MIN{0};
-const char INIT_CHAR{'.'};
-const char MAX_STRING_LEN{64};
+const int16_t CO2_MAX = 1500;
+const int16_t CO2_MIN = 0;
+const char INIT_CHAR = '.';
+const uint MAX_STRING_LEN = 64;
 
 enum program_state {
     STATUS,
@@ -44,24 +43,21 @@ enum thing_speak_event{
 };
 
 struct RTOS_infrastructure {
-    QueueHandle_t qState{nullptr};
-    QueueHandle_t qNetworkPhase{nullptr};
-    QueueHandle_t qCO2TargetPending{nullptr};
-    QueueHandle_t qCO2TargetCurrent{nullptr};
-    QueueHandle_t qCO2Measurement{nullptr};
-    QueueHandle_t qPressure{nullptr};
-    QueueHandle_t qFan{nullptr};
-    QueueHandle_t qHumidity{nullptr};
-    QueueHandle_t qTemperature{nullptr};
-    QueueHandle_t qCharPending{nullptr};
-    QueueHandle_t qConnectionState{nullptr};
-    QueueHandle_t qNetworkStrings[3] {[NEW_API] = nullptr,
-                                      [NEW_SSID] = nullptr,
-                                      [NEW_PW] = nullptr};
-    QueueHandle_t qStorageQueue{nullptr};
+    QueueHandle_t qState;
+    QueueHandle_t qNetworkPhase;
+    QueueHandle_t qCO2TargetPending;
+    QueueHandle_t qCO2TargetCurrent;
+    QueueHandle_t qCO2Measurement;
+    QueueHandle_t qPressure;
+    QueueHandle_t qFan;
+    QueueHandle_t qHumidity;
+    QueueHandle_t qTemperature;
+    QueueHandle_t qCharPending;
+    QueueHandle_t qConnectionState;
+    QueueHandle_t qNetworkStrings[3];
 
-    SemaphoreHandle_t sUpdateGreenhouse{nullptr};
-    SemaphoreHandle_t sUpdateDisplay{nullptr};
+    SemaphoreHandle_t sUpdateGreenhouse;
+    SemaphoreHandle_t sUpdateDisplay;
     EventGroupHandle_t xThingSpeakEvent;
 };
 

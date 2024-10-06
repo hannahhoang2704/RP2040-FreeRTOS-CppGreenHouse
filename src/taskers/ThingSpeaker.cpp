@@ -1,3 +1,4 @@
+#include <lwip/altcp_tls.h>
 #include "ThingSpeaker.h"
 #include "Logger.h"
 
@@ -14,13 +15,13 @@ TaskHandle_t ThingSpeaker::mTaskHandle{nullptr};
 //    }
 //}
 
-ThingSpeaker::ThingSpeaker(RTOS_infrastructure iRTOS, const char *wifi_ssid, const char *wifi_pw, const char *thingspeak_api) :
+ThingSpeaker::ThingSpeaker(RTOS_infrastructure iRTOS, const char *wifi_ssid, const char *wifi_pw,
+                           const char *thingspeak_api) :
         RTOS_infra(iRTOS),
         mInitSSID(wifi_ssid),
         mInitPW(wifi_pw),
         thing_speak_api(thingspeak_api),
-        mIPStack()
-        {
+        mIPStack() {
     if (xTaskCreate(task_speak,
                     "THINGSPEAK",
                     1024,
@@ -32,15 +33,15 @@ ThingSpeaker::ThingSpeaker(RTOS_infrastructure iRTOS, const char *wifi_ssid, con
         Logger::log("Failed to create THING_SPEAKER task\n");
     }
     mSendDataTimer = xTimerCreate("SEND_DATA_TO_THINGSPEAK",
-                                 pdMS_TO_TICKS(SEND_DATA_TIMER_FREQ),
-                                 pdTRUE,
-                                 (void *) iRTOS.xThingSpeakEvent,
-                                 ThingSpeaker::send_data_callback);
+                                  pdMS_TO_TICKS(SEND_DATA_TIMER_FREQ),
+                                  pdTRUE,
+                                  (void *) iRTOS.xThingSpeakEvent,
+                                  ThingSpeaker::send_data_callback);
     mReceiveDataTimer = xTimerCreate("RECEIVE_DATA_TO_THINGSPEAK",
-                                 pdMS_TO_TICKS(RECEIVE_DATA_TIMER_FREQ),
-                                 pdTRUE,
-                                 (void *) iRTOS.xThingSpeakEvent,
-                                 ThingSpeaker::receive_data_callback);
+                                     pdMS_TO_TICKS(RECEIVE_DATA_TIMER_FREQ),
+                                     pdTRUE,
+                                     (void *) iRTOS.xThingSpeakEvent,
+                                     ThingSpeaker::receive_data_callback);
     if (mSendDataTimer != nullptr) {
         Logger::log("Created SEND_DATA_TO_THINGSPEAK timer\n");
     } else {
@@ -63,7 +64,7 @@ void ThingSpeaker::speak() {
 //    xTimerStop(mSendDataTimer, portMAX_DELAY); //this should be when reconnect the wifi network
 //    xTimerStop(mReceiveDataTimer, portMAX_DELAY);
     //wifi connection
-    if(cyw43_arch_init()){
+    if (cyw43_arch_init()) {
         Logger::log("Fail to initialize\n");
     }
     cyw43_arch_enable_sta_mode();
@@ -73,18 +74,25 @@ void ThingSpeaker::speak() {
 
     //start timer
     xTimerStart(mSendDataTimer, portMAX_DELAY);
-//    xTimerStart(mReceiveDataTimer, portMAX_DELAY);
-    mTLSClient = tls_client_init();
-    EventBits_t event;
-    while (true){
+    //xTimerStart(mReceiveDataTimer, portMAX_DELAY);printf("connecting to server IP %s port %d\n", ipaddr_ntoa(ipaddr), port);
+    set_iRTOS(RTOS_infra);
+    if (!init_tls(mTLSClient, TLS_CLIENT_HTTP_REQUEST, TLS_CLIENT_TIMEOUT_SECS, TLS_CLIENT_SERVER)) {
+        Logger::log("Failed to initialize TLS Client\n");
+    }
+
+    while (true) {
+        /*
         bool pass = run_tls_client_test(NULL, 0, TLS_CLIENT_SERVER, TLS_CLIENT_HTTP_REQUEST, TLS_CLIENT_TIMEOUT_SECS);
         if (pass) {
             Logger::log("Test passed\n");
         } else {
             Logger::log("Test failed\n");
         }
-        event= xEventGroupGetBits(RTOS_infra.xThingSpeakEvent);
-        if(event & bSEND){
+        */
+        mEvents = xEventGroupGetBits(RTOS_infra.xThingSpeakEvent);
+        xEventGroupClearBits(RTOS_infra.xThingSpeakEvent, bSEND | bRECEIVE | bRECONNECT);
+        if (mEvents & bSEND) {
+
             if (xQueuePeek(RTOS_infra.qCO2TargetCurrent, &mCO2Target, 0) == pdTRUE) {
                 Logger::log("CO2 Target: %hd\n", mCO2Target);
             }
@@ -105,14 +113,25 @@ void ThingSpeaker::speak() {
             }
             char request[2048];
             snprintf(request, 2048, REQUEST_FMT, thing_speak_api,
-             mCO2Target,
-             mCO2Measurement,
-             mPressure,
-             mFan,
-             mHumidity,
-             mTemperature);
-
+                     mCO2Target,
+                     mCO2Measurement,
+                     mPressure,
+                     mFan,
+                     mHumidity,
+                     mTemperature);
+            mTLSClient->http_request = request;
             Logger::log("Sending: %s\n", request);
+            vTaskDelay(1000);
+            mErr = send(mTLSClient, TLS_CLIENT_SERVER);
+            if (mErr != ERR_OK) {
+                Logger::log("error writing data err=%d\n", mErr);
+            }
+        }
+        if (mEvents & bRECEIVE) {
+
+        }
+        if (mEvents & bRECONNECT) {
+
         }
     }
 
@@ -136,6 +155,11 @@ void ThingSpeaker::speak() {
 void ThingSpeaker::send_data_callback(TimerHandle_t xTimer) {
     auto xEventGroup = static_cast<EventGroupHandle_t>(pvTimerGetTimerID(xTimer));
     xEventGroupSetBits(xEventGroup, bSEND);
+}
+
+void ThingSpeaker::receive_data_callback(TimerHandle_t xTimer) {
+    auto xEventGroup = static_cast<EventGroupHandle_t>(pvTimerGetTimerID(xTimer));
+    xEventGroupSetBits(xEventGroup, bRECEIVE);
 }
 
 //void ThingSpeaker::send_data_callback(TimerHandle_t xTimer) {

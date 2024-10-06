@@ -105,9 +105,9 @@ int main() {
 
     /// taskers
     new Display(OLED_SDP600_I2C, iRTOS);
-    new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
+    //new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
     new Logger(CLI_UART);
-    new Storage(EEPROM_I2C, iRTOS);
+    //new Storage(EEPROM_I2C, iRTOS);
     new SwitchHandler(iRTOS);
     new ThingSpeaker(iRTOS);
 
