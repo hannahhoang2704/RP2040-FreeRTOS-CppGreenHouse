@@ -97,7 +97,7 @@ void Storage::storage() {
             }
         }
         if (mLostStores > 0) {
-            Logger::log("Lost %u store calls\n");
+            Logger::log("Lost %u store calls\n", mLostStores);
             mLostStores = 0;
         }
     }
