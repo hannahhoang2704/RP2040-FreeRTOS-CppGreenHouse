@@ -34,6 +34,19 @@ void EEPROM::put(uint16_t address, uint16_t number){
     write_to_eeprom(address, data, 2 + CRC_CHAR);
 }
 
+void EEPROM::put(uint16_t address, int16_t number){
+    put(address, static_cast<uint16_t>(number));
+}
+
+bool EEPROM::get(uint16_t address, int16_t &val){
+    uint16_t unsignedVal;
+    if (get(address, unsignedVal)) {
+        val = static_cast<int16_t>(unsignedVal);
+        return true;
+    }
+    return false;
+}
+
 bool EEPROM::get(uint16_t address, uint16_t &val){
     uint8_t data[2 + CRC_CHAR];
     read_from_eeprom(address, data, 2 + CRC_CHAR);
@@ -49,15 +62,19 @@ bool EEPROM::get(uint16_t address, uint16_t &val){
 
 void EEPROM::put(uint16_t address, const std::string& str) {
     const char* str_ = str.c_str();
-    size_t string_length = strlen(str_) + 1;
+    put(address, str_);
+}
+
+void EEPROM::put(uint16_t address, const char *str){
+    size_t string_length = strlen(str) + 1;
     if (string_length > STRLEN_EEPROM) {
         string_length = STRLEN_EEPROM;
     }
     uint8_t data_str[string_length + CRC_CHAR];
-    for (int a = 0; a < strlen(str_); ++a) {
+    for (int a = 0; a < strlen(str); ++a) {
         data_str[a] = (uint8_t) str[a];
     }
-    data_str[strlen(str_)] = '\0';
+    data_str[strlen(str)] = '\0';
     uint16_t crc = crc16(data_str, string_length);
     data_str[string_length] = static_cast<uint8_t>((crc >> BITS_PER_BYTE) & 0xFF);
     data_str[string_length + 1] = static_cast<uint8_t>(crc & 0xFF);
@@ -156,9 +173,8 @@ void EEPROM::erase_logs() {
 void EEPROM::set_log_index_value() {
     uint16_t index;
     if(get(EEPROM::LOG_INDEX_ADDR, index) && index <= MAX_ENTRIES && index >= 0){
-        Logger::log("index get in eeprom is %u\n", index);
         log_index = index;
-        Logger::log("log index get in eeprom is %u\n", log_index);
+        Logger::log("log index get from eeprom is %u\n", log_index);
     }else{
         log_index = 0;
     }

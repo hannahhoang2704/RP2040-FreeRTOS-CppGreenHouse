@@ -1,6 +1,7 @@
 #include "SwitchHandler.h"
 #include "Logger.h"
 #include "Display.h"
+#include "Storage.h"
 
 QueueHandle_t SwitchHandler::mIRQ_eventQueue = xQueueCreate(10, sizeof(button_irq_event_data));;
 uint32_t SwitchHandler::mLostEvents = 0;
@@ -162,6 +163,7 @@ void SwitchHandler::insert() {
             mCO2TargetCurrent = mCO2TargetPending;
             xQueueOverwrite(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent);
             xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
+            Storage::store(CO2_target);
             xSemaphoreGive(iRTOS.sUpdateDisplay);
             xSemaphoreGive(iRTOS.sUpdateGreenhouse);
             Logger::log("[STATUS] CO2 set: %hu\n", mCO2TargetCurrent);
@@ -196,6 +198,7 @@ void SwitchHandler::next_phase() {
                             mNetworkStrings[NEW_API].c_str(),
                             mNetworkStrings[NEW_SSID].c_str(),
                             mNetworkStrings[NEW_PW].c_str());
+                Storage::store(API_str);
                 mNetworkPhase = NEW_SSID;
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
                 break;
@@ -204,6 +207,7 @@ void SwitchHandler::next_phase() {
                             mNetworkStrings[NEW_API].c_str(),
                             mNetworkStrings[NEW_SSID].c_str(),
                             mNetworkStrings[NEW_PW].c_str());
+                Storage::store(SSID_str);
                 mNetworkPhase = NEW_PW;
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
                 break;
@@ -215,6 +219,9 @@ void SwitchHandler::next_phase() {
 
                 // TODO: send strings to ThingSpeaker + order reconnection
 
+                Storage::store(PW_str);
+
+                //// consider when and where -- or if the strings should be emptied
                 for (std::string &str: mNetworkStrings) str.clear();
 
                 mState = STATUS;

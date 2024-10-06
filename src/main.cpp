@@ -78,12 +78,14 @@ int main() {
                     [NEW_SSID]  = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
                     [NEW_PW]    = xQueueCreate(1, sizeof(char[MAX_STRING_LEN]))
             },
+            .qStorageQueue = xQueueCreate(5, sizeof(storage_data)),
 
             .sUpdateGreenhouse = xSemaphoreCreateBinary(),
             .sUpdateDisplay = xSemaphoreCreateBinary()
     };
 
     // register all the queues
+    vQueueAddToRegistry(iRTOS.qState, "State");
     vQueueAddToRegistry(iRTOS.qNetworkPhase, "NetworkCredentials");
     vQueueAddToRegistry(iRTOS.qCO2TargetPending, "CO2TargetPending");
     vQueueAddToRegistry(iRTOS.qCO2TargetCurrent, "CO2TargetCurrent");
@@ -93,7 +95,11 @@ int main() {
     vQueueAddToRegistry(iRTOS.qHumidity, "Humidity");
     vQueueAddToRegistry(iRTOS.qTemperature, "Temperature");
     vQueueAddToRegistry(iRTOS.qCharPending, "CharacterPending");
-
+    vQueueAddToRegistry(iRTOS.qConnectionState, "ConnectionState");
+    vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_API], "NewAPI");
+    vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_SSID], "NewSSID");
+    vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_PW], "NewPW");
+    vQueueAddToRegistry(iRTOS.qStorageQueue, "StorageQueue");
 
     /// taskers
     new Display(OLED_SDP600_I2C, iRTOS);
