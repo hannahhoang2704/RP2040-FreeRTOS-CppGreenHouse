@@ -17,9 +17,12 @@
 class Storage {
 public:
     Storage(const std::shared_ptr<PicoI2C>& i2c_sp, RTOS_infrastructure RTOS_infrastructure);
+    static void store(storage_data command);
 private:
     void storage();
     static void task_storage(void * params);
+    static uint mLostStores;
+    static QueueHandle_t qStorage;
     EEPROM mEEPROM;
     TaskHandle_t mTaskHandle;
     RTOS_infrastructure iRTOS;

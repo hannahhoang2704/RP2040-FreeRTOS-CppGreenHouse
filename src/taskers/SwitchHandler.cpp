@@ -1,6 +1,7 @@
 #include "SwitchHandler.h"
 #include "Logger.h"
 #include "Display.h"
+#include "Storage.h"
 
 QueueHandle_t SwitchHandler::mIRQ_eventQueue = xQueueCreate(10, sizeof(button_irq_event_data));;
 uint32_t SwitchHandler::mLostEvents = 0;
@@ -160,12 +161,9 @@ void SwitchHandler::insert() {
     if (mState == STATUS) {
         if (mCO2TargetCurrent != mCO2TargetPending) {
             mCO2TargetCurrent = mCO2TargetPending;
-            storageData = CO2_target;
             xQueueOverwrite(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent);
             xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
-            if(xQueueSendToBack(iRTOS.qStorageQueue, &storageData , pdMS_TO_TICKS(1000)) != pdPASS){
-                Logger::log("Failed to send CO2 target to storage queue\n");
-            };
+            Storage::store(CO2_target);
             xSemaphoreGive(iRTOS.sUpdateDisplay);
             xSemaphoreGive(iRTOS.sUpdateGreenhouse);
             Logger::log("[STATUS] CO2 set: %hu\n", mCO2TargetCurrent);
@@ -200,10 +198,7 @@ void SwitchHandler::next_phase() {
                             mNetworkStrings[NEW_API].c_str(),
                             mNetworkStrings[NEW_SSID].c_str(),
                             mNetworkStrings[NEW_PW].c_str());
-                storageData = API_str;
-                if(xQueueSendToBack(iRTOS.qStorageQueue, &storageData , pdMS_TO_TICKS(1000)) != pdPASS){
-                    Logger::log("Failed to send new API string to storage queue\n");
-                };
+                Storage::store(API_str);
                 mNetworkPhase = NEW_SSID;
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
                 break;
@@ -212,10 +207,7 @@ void SwitchHandler::next_phase() {
                             mNetworkStrings[NEW_API].c_str(),
                             mNetworkStrings[NEW_SSID].c_str(),
                             mNetworkStrings[NEW_PW].c_str());
-                storageData = SSID_str;
-                if(xQueueSendToBack(iRTOS.qStorageQueue, &storageData , pdMS_TO_TICKS(1000)) != pdPASS){
-                    Logger::log("Failed to send new SSID string to storage queue\n");
-                };
+                Storage::store(SSID_str);
                 mNetworkPhase = NEW_PW;
                 xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
                 break;
@@ -227,10 +219,9 @@ void SwitchHandler::next_phase() {
 
                 // TODO: send strings to ThingSpeaker + order reconnection
 
-                storageData = PW_str;
-                if(xQueueSendToBack(iRTOS.qStorageQueue, &storageData , pdMS_TO_TICKS(1000)) != pdPASS){
-                    Logger::log("Failed to send new SSID string to storage queue\n");
-                };
+                Storage::store(PW_str);
+
+                //// consider when and where -- or if the strings should be emptied
                 for (std::string &str: mNetworkStrings) str.clear();
 
                 mState = STATUS;
