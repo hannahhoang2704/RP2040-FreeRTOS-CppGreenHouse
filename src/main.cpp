@@ -82,7 +82,8 @@ int main() {
             .qStorageQueue = xQueueCreate(5, sizeof(storage_data)),
 
             .sUpdateGreenhouse = xSemaphoreCreateBinary(),
-            .sUpdateDisplay = xSemaphoreCreateBinary()
+            .sUpdateDisplay = xSemaphoreCreateBinary(),
+            .xThingSpeakEvent = xEventGroupCreate()
     };
 
     // register all the queues
@@ -108,7 +109,7 @@ int main() {
     new Logger(CLI_UART);
     new Storage(EEPROM_I2C, iRTOS);
     new SwitchHandler(iRTOS);
-    new ThingSpeaker();
+    new ThingSpeaker(iRTOS);
 
     Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();

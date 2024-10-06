@@ -16,14 +16,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
-
-typedef struct TLS_CLIENT_T_ {
-    struct altcp_pcb *pcb;
-    bool complete;
-    int error;
-    const char *http_request;
-    int timeout;
-} TLS_CLIENT_T;
+#include "tls_common.h"
 
 static struct altcp_tls_config *tls_config = NULL;
 
@@ -98,6 +91,7 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
         buf[p->tot_len] = 0;
 
         printf("***\nnew data received from server:\n***\n\n%s\n", buf);
+        //command string handle here
         free(buf);
 
         altcp_recved(pcb, p->tot_len);
