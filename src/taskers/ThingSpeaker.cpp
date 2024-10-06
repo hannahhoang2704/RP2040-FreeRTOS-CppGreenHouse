@@ -35,12 +35,12 @@ ThingSpeaker::ThingSpeaker(RTOS_infrastructure iRTOS, const char *wifi_ssid, con
     mSendDataTimer = xTimerCreate("SEND_DATA_TO_THINGSPEAK",
                                   pdMS_TO_TICKS(SEND_DATA_TIMER_FREQ),
                                   pdTRUE,
-                                  (void *) iRTOS.xThingSpeakEvent,
+                                  (void *)& iRTOS,
                                   ThingSpeaker::send_data_callback);
     mReceiveDataTimer = xTimerCreate("RECEIVE_DATA_TO_THINGSPEAK",
                                      pdMS_TO_TICKS(RECEIVE_DATA_TIMER_FREQ),
                                      pdTRUE,
-                                     (void *) iRTOS.xThingSpeakEvent,
+                                     (void *) &iRTOS,
                                      ThingSpeaker::receive_data_callback);
     if (mSendDataTimer != nullptr) {
         Logger::log("Created SEND_DATA_TO_THINGSPEAK timer\n");
@@ -74,66 +74,67 @@ void ThingSpeaker::speak() {
 
     //start timer
     xTimerStart(mSendDataTimer, portMAX_DELAY);
-    //xTimerStart(mReceiveDataTimer, portMAX_DELAY);printf("connecting to server IP %s port %d\n", ipaddr_ntoa(ipaddr), port);
+    xTimerStart(mReceiveDataTimer, portMAX_DELAY);
     set_iRTOS(RTOS_infra);
-    if (!init_tls(mTLSClient, TLS_CLIENT_HTTP_REQUEST, TLS_CLIENT_TIMEOUT_SECS, TLS_CLIENT_SERVER)) {
-        Logger::log("Failed to initialize TLS Client\n");
-    }
+//    if (!init_tls(mTLSClient, TLS_CLIENT_HTTP_REQUEST, TLS_CLIENT_TIMEOUT_SECS, TLS_CLIENT_SERVER)) {
+//        Logger::log("Failed to initialize TLS Client\n");
+//    }
 
     while (true) {
-        /*
-        bool pass = run_tls_client_test(NULL, 0, TLS_CLIENT_SERVER, TLS_CLIENT_HTTP_REQUEST, TLS_CLIENT_TIMEOUT_SECS);
-        if (pass) {
-            Logger::log("Test passed\n");
-        } else {
-            Logger::log("Test failed\n");
-        }
-        */
-        mEvents = xEventGroupGetBits(RTOS_infra.xThingSpeakEvent);
-        xEventGroupClearBits(RTOS_infra.xThingSpeakEvent, bSEND | bRECEIVE | bRECONNECT);
-        if (mEvents & bSEND) {
 
-            if (xQueuePeek(RTOS_infra.qCO2TargetCurrent, &mCO2Target, 0) == pdTRUE) {
-                Logger::log("CO2 Target: %hd\n", mCO2Target);
-            }
-            if (xQueuePeek(RTOS_infra.qCO2Measurement, &mCO2Measurement, 0) == pdTRUE) {
-                Logger::log("CO2 measurement: %f\n", mCO2Measurement);
-            }
-            if (xQueuePeek(RTOS_infra.qPressure, &mPressure, 0) == pdTRUE) {
-                Logger::log("Pressure: %f\n", mPressure);
-            }
-            if (xQueuePeek(RTOS_infra.qFan, &mFan, 0) == pdTRUE) {
-                Logger::log("Fan: %hd\n", mFan);
-            }
-            if (xQueuePeek(RTOS_infra.qHumidity, &mHumidity, 0) == pdTRUE) {
-                Logger::log("Humid: %f\n", mHumidity);
-            }
-            if (xQueuePeek(RTOS_infra.qTemperature, &mTemperature, 0) == pdTRUE) {
-                Logger::log("Temp: %f\n", mTemperature);
-            }
-            char request[2048];
-            snprintf(request, 2048, REQUEST_FMT, thing_speak_api,
-                     mCO2Target,
-                     mCO2Measurement,
-                     mPressure,
-                     mFan,
-                     mHumidity,
-                     mTemperature);
-            mTLSClient->http_request = request;
-            Logger::log("Sending: %s\n", request);
-            vTaskDelay(1000);
-            mErr = send(mTLSClient, TLS_CLIENT_SERVER);
-            if (mErr != ERR_OK) {
-                Logger::log("error writing data err=%d\n", mErr);
-            }
-        }
-        if (mEvents & bRECEIVE) {
-
-        }
-        if (mEvents & bRECONNECT) {
-
-        }
     }
+//
+////        bool pass = run_tls_client_test(NULL, 0, TLS_CLIENT_SERVER, TLS_CLIENT_HTTP_REQUEST, TLS_CLIENT_TIMEOUT_SECS);
+//        bool pass = init_tls(mTLSClient, TLS_CLIENT_HTTP_REQUEST, TLS_CLIENT_TIMEOUT_SECS, TLS_CLIENT_SERVER);
+//        if (pass) {
+//            Logger::log("Test passed\n");
+//        } else {
+//            Logger::log("Test failed\n");
+//        }
+//        mEvents = xEventGroupGetBits(RTOS_infra.xThingSpeakEvent);
+//        xEventGroupClearBits(RTOS_infra.xThingSpeakEvent, bSEND | bRECEIVE | bRECONNECT);
+//        if (mEvents & bSEND) {
+//            if (xQueuePeek(RTOS_infra.qCO2TargetCurrent, &mCO2Target, 0) == pdTRUE) {
+//                Logger::log("CO2 Target: %hd\n", mCO2Target);
+//            }
+//            if (xQueuePeek(RTOS_infra.qCO2Measurement, &mCO2Measurement, 0) == pdTRUE) {
+//                Logger::log("CO2 measurement: %f\n", mCO2Measurement);
+//            }
+//            if (xQueuePeek(RTOS_infra.qPressure, &mPressure, 0) == pdTRUE) {
+//                Logger::log("Pressure: %f\n", mPressure);
+//            }
+//            if (xQueuePeek(RTOS_infra.qFan, &mFan, 0) == pdTRUE) {
+//                Logger::log("Fan: %hd\n", mFan);
+//            }
+//            if (xQueuePeek(RTOS_infra.qHumidity, &mHumidity, 0) == pdTRUE) {
+//                Logger::log("Humid: %f\n", mHumidity);
+//            }
+//            if (xQueuePeek(RTOS_infra.qTemperature, &mTemperature, 0) == pdTRUE) {
+//                Logger::log("Temp: %f\n", mTemperature);
+//            }
+//            char request[2048];
+//            snprintf(request, 2048, REQUEST_FMT, thing_speak_api,
+//                     mCO2Target,
+//                     mCO2Measurement,
+//                     mPressure,
+//                     mFan,
+//                     mHumidity,
+//                     mTemperature);
+//            mTLSClient->http_request = request;
+//            Logger::log("Sending: %s\n", request);
+//            vTaskDelay(1000);
+//            mErr = send(mTLSClient, TLS_CLIENT_SERVER);
+//            if (mErr != ERR_OK) {
+//                Logger::log("error writing data err=%d\n", mErr);
+//            }
+//        }
+//        if (mEvents & bRECEIVE) {
+//
+//        }
+//        if (mEvents & bRECONNECT) {
+//
+//        }
+
 
 //
 //    mIPStack.connect_wifi(mInitSSID.c_str(), mInitPW.c_str());
@@ -152,65 +153,70 @@ void ThingSpeaker::speak() {
 //    }
 }
 
-void ThingSpeaker::send_data_callback(TimerHandle_t xTimer) {
-    auto xEventGroup = static_cast<EventGroupHandle_t>(pvTimerGetTimerID(xTimer));
-    xEventGroupSetBits(xEventGroup, bSEND);
-}
+
 
 void ThingSpeaker::receive_data_callback(TimerHandle_t xTimer) {
-    auto xEventGroup = static_cast<EventGroupHandle_t>(pvTimerGetTimerID(xTimer));
-    xEventGroupSetBits(xEventGroup, bRECEIVE);
+    bool pass = run_tls_client_test(NULL, 0, TLS_CLIENT_SERVER, TLS_CLIENT_HTTP_REQUEST, TLS_CLIENT_TIMEOUT_SECS);
+    if (pass) {
+        printf("Test passed\n");
+    } else {
+        printf("Test failed\n");
+    }
 }
 
-//void ThingSpeaker::send_data_callback(TimerHandle_t xTimer) {
-//    auto iRTOS = static_cast<RTOS_infrastructure *>(pvTimerGetTimerID(xTimer));
-//    int16_t qCO2TargetCurrent;
-//    float mCO2Measurement{0};
-//    float mPressure{0};
-//    int16_t mFan{0};
-//    float mHumidity{0};
-//    float mTemperature{0};
-//
-//    if (xQueuePeek(iRTOS->qCO2TargetCurrent, &qCO2TargetCurrent, 0) == pdTRUE) {
-//        Logger::log("CO2 Target: %hd\n", qCO2TargetCurrent);
-//    }
-//    if (xQueuePeek(iRTOS->qCO2Measurement, &mCO2Measurement, 0) == pdTRUE) {
-//        Logger::log("CO2 measurement: %f\n", mCO2Measurement);
-//    }
-//    if (xQueuePeek(iRTOS->qPressure, &mPressure, 0) == pdTRUE) {
-//        Logger::log("Pressure: %f\n", mPressure);
-//    }
-//    if (xQueuePeek(iRTOS->qFan, &mFan, 0) == pdTRUE) {
-//        Logger::log("Fan: %hd\n", mFan);
-//    }
-//    if (xQueuePeek(iRTOS->qHumidity, &mHumidity, 0) == pdTRUE) {
-//        Logger::log("Humid: %f\n", mHumidity);
-//    }
-//    if (xQueuePeek(iRTOS->qTemperature, &mTemperature, 0) == pdTRUE) {
-//        Logger::log("Temp: %f\n", mTemperature);
-//    }
-//    char request[2048];
-//    const char *REQUEST_FMT = "GET /update?api_key=%s"
-//                              "&field1=%hd"
-//                              "&field2=%.1f"
-//                              "&field3=%.1f"
-//                              "&field4=%hd"
-//                              "&field5=%.1f"
-//                              "&field6=%.1f"
-//                              " HTTP/1.1\r\n"
-//                              "Host: api.thingspeak.com\r\n"
-//                              "\r\n";
-//    snprintf(request, 2048, REQUEST_FMT, THING_SPEAK_API,
-//             qCO2TargetCurrent,
-//             mCO2Measurement,
-//             mPressure,
-//             mFan,
-//             mHumidity,
-//             mTemperature);
-//    Logger::log("Sending: %s\n", request);
+void ThingSpeaker::send_data_callback(TimerHandle_t xTimer) {
+    auto iRTOS = static_cast<RTOS_infrastructure *>(pvTimerGetTimerID(xTimer));
+    int16_t qCO2TargetCurrent;
+    float mCO2Measurement{0};
+    float mPressure{0};
+    int16_t mFan{0};
+    float mHumidity{0};
+    float mTemperature{0};
 
-//
-//}
+    if (xQueuePeek(iRTOS->qCO2TargetCurrent, &qCO2TargetCurrent, 0) == pdTRUE) {
+        Logger::log("CO2 Target: %hd\n", qCO2TargetCurrent);
+    }
+    if (xQueuePeek(iRTOS->qCO2Measurement, &mCO2Measurement, 0) == pdTRUE) {
+        Logger::log("CO2 measurement: %f\n", mCO2Measurement);
+    }
+    if (xQueuePeek(iRTOS->qPressure, &mPressure, 0) == pdTRUE) {
+        Logger::log("Pressure: %f\n", mPressure);
+    }
+    if (xQueuePeek(iRTOS->qFan, &mFan, 0) == pdTRUE) {
+        Logger::log("Fan: %hd\n", mFan);
+    }
+    if (xQueuePeek(iRTOS->qHumidity, &mHumidity, 0) == pdTRUE) {
+        Logger::log("Humid: %f\n", mHumidity);
+    }
+    if (xQueuePeek(iRTOS->qTemperature, &mTemperature, 0) == pdTRUE) {
+        Logger::log("Temp: %f\n", mTemperature);
+    }
+    char request[2048];
+    const char *REQUEST_FMT = "GET /update?api_key=%s"
+                              "&field1=%hd"
+                              "&field2=%.1f"
+                              "&field3=%.1f"
+                              "&field4=%hd"
+                              "&field5=%.1f"
+                              "&field6=%.1f"
+                              " HTTP/1.1\r\n"
+                              "Host: api.thingspeak.com\r\n"
+                              "\r\n";
+    snprintf(request, 2048, REQUEST_FMT, THING_SPEAK_API,
+             qCO2TargetCurrent,
+             mCO2Measurement,
+             mPressure,
+             mFan,
+             mHumidity,
+             mTemperature);
+    Logger::log("Sending: %s\n", request);
+    bool pass = run_tls_client_test(NULL, 0, TLS_CLIENT_SERVER, request, TLS_CLIENT_TIMEOUT_SECS);
+    if (pass) {
+        printf("Test passed\n");
+    } else {
+        printf("Test failed\n");
+    }
+}
 
 //void ThingSpeaker::execute_notifications() {
 //    if (mNotification & bRECONNECT) {
