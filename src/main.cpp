@@ -108,6 +108,7 @@ int main() {
     new Logger(CLI_UART);
     new Storage(EEPROM_I2C, iRTOS);
     new SwitchHandler(iRTOS);
+    new ThingSpeaker();
 
     Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();
