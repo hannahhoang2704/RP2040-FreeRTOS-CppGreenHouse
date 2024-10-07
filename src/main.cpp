@@ -102,13 +102,16 @@ int main() {
     vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_PW], "NewPW");
     vQueueAddToRegistry(iRTOS.qStorageQueue, "StorageQueue");
 
+    const char SSID[] = "Nadim";
+    const char WIFI_PW[] = "nadimahmed";
+    const char API_KEY[] = "9JS2SW0BYBVNSLTC";
     /// taskers
     new Display(OLED_SDP600_I2C, iRTOS);
     new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
     new Logger(CLI_UART);
     new Storage(EEPROM_I2C, iRTOS);
     new SwitchHandler(iRTOS);
-    new ThingSpeaker();
+    new ThingSpeaker(SSID, WIFI_PW, API_KEY);
 
     Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();

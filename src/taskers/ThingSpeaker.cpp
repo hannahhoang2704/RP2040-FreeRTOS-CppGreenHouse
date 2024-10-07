@@ -13,9 +13,10 @@ void ThingSpeaker::notify(eNotifyAction eAction, uint32_t note) {
     }
 }
 
-ThingSpeaker::ThingSpeaker(const char *wifi_ssid, const char *wifi_pw) :
+ThingSpeaker::ThingSpeaker(const char *wifi_ssid, const char *wifi_pw, const char*api) :
         mInitSSID(wifi_ssid),
         mInitPW(wifi_pw),
+        mAPI(api),
         mIPStack()
         {
     if (xTaskCreate(task_speak,

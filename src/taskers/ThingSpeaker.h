@@ -16,7 +16,7 @@ enum thing_speaker_commands {
 
 class ThingSpeaker {
 public:
-    ThingSpeaker(const char *wifi_ssid = WIFI_SSID, const char *wifi_pw = WIFI_PASSWORD);
+    ThingSpeaker(const char *wifi_ssid = WIFI_SSID, const char *wifi_pw = WIFI_PASSWORD, const char*api=THING_SPEAK_API);
 
     static void notify(eNotifyAction eAction, uint32_t note);
 
