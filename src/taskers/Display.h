@@ -63,7 +63,7 @@ private:
     int16_t mCO2TargetCurrent{0};
     int16_t mCO2TargetPending{0};
     float mCO2Measurement{0};
-    float mPressure{0};
+    int mPressure{0};
     int16_t mFan{0};
     float mHumidity{0};
     float mTemperature{0};
