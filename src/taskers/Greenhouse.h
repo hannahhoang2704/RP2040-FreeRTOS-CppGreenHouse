@@ -64,8 +64,6 @@ private:
     float mCO2Delta{0};
     float mCO2PrevDelta{0};
     float mCO2Change{0};
-    bool mCO2Emitting{false};
-
 
     RTOS_infrastructure iRTOS;
 };
