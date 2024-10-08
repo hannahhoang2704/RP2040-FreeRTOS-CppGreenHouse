@@ -24,7 +24,6 @@ public:
     Logger(std::shared_ptr<PicoOsUart> uart_sp);
     static void log(const char* format, ...);
     static void log(const std::string &string);
-    static uint32_t mLost_Log_event;
 
 private:
     void run();
@@ -35,6 +34,7 @@ private:
     static QueueHandle_t mSyslog_queue;
     char buffer[256];
     int offset;
+    static uint32_t mLost_Log_event;
     struct debugEvent {
         char message[BUFFER_SIZE];
         uint64_t timestamp;

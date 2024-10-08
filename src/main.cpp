@@ -67,7 +67,7 @@ int main() {
             .qCO2TargetPending  = xQueueCreate(1, sizeof(int16_t)),
             .qCO2TargetCurrent  = xQueueCreate(1, sizeof(int16_t)),
             .qCO2Measurement    = xQueueCreate(1, sizeof(float)),
-            .qPressure          = xQueueCreate(1, sizeof(float)),
+            .qPressure          = xQueueCreate(1, sizeof(int)),
             .qFan               = xQueueCreate(1, sizeof(int16_t)),
             .qHumidity          = xQueueCreate(1, sizeof(float)),
             .qTemperature       = xQueueCreate(1, sizeof(float)),

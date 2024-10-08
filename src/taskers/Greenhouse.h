@@ -34,11 +34,11 @@ private:
     void pursue_CO2_target();
 
     TaskHandle_t mTaskHandle;
-    TimerHandle_t mTimerHandle;
-    static uint64_t mPrevNotification;
+    TimerHandle_t mUpdateTimerHandle;
+    TimerHandle_t mCO2WaitTimerHandle;
 
     const uint DEFAULT_TIMER_FREQ_MS{1000};
-    const uint PURSUING_TIMER_FREQ_MS{200};
+    const uint CO2_DIFFUSION_MS{15000};
     uint mTimerFreq{DEFAULT_TIMER_FREQ_MS};
 
     Sensor::CO2 sCO2;
@@ -57,11 +57,13 @@ private:
     const float UPDATE_THRESHOLD{1};
 
     const float CO2_FATAL{2000};
-    const float CO2_DELTA_MARGIN{50};
+    const float CO2_EXPECTED_EMISSION_RATE_CO2pS{200}; // scientifically tested -- not magic
+    const float CO2_EMISSION_MARGIN{CO2_EXPECTED_EMISSION_RATE_CO2pS};
+    const float CO2_EXPECTED_FAN_EFFECT_RATE_CO2_ps{55};
+    const float CO2_FAN_MARGIN{CO2_EXPECTED_FAN_EFFECT_RATE_CO2_ps * 2};
     float mCO2Delta{0};
-    bool mPursuingCO2Target{false};
-
-
+    float mCO2PrevDelta{0};
+    float mCO2Change{0};
 
     RTOS_infrastructure iRTOS;
 };

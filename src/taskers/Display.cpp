@@ -70,7 +70,7 @@ void Display::update() {
         print_network_input();
         print_network_pending_char();
     }
-    print_connection();
+    //print_connection();
 }
 
 /// STATUS Screen
@@ -90,9 +90,9 @@ void Display::print_CO2_target() {
     bool currentQempty = xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent, 0) == pdFALSE;
     if (pendingQempty) {
         Logger::log("WARNING: qCO2TargetPending empty\n");
-    }
-    if (currentQempty) {
-        Logger::log("WARNING: qCO2TargetCurr empty\n");
+        if (currentQempty) {
+            Logger::log("WARNING: qCO2TargetCurr empty\n");
+        }
     }
     bool pending = mCO2TargetPending != mCO2TargetCurrent;
     if (currentQempty) {
@@ -134,9 +134,9 @@ void Display::print_pressure() {
         Logger::log("WARNING: qPressure empty\n");
         ssValue << setw(STATUS_VALUE_W) << "N/A";
     } else {
-        ssValue << setw(STATUS_VALUE_W) << setprecision(1) << fixed << mPressure;
+        ssValue << setw(STATUS_VALUE_W - 2) << mPressure;
     }
-    ssValue << " ppm";
+    ssValue << "   Pa";
     mSSD1306.text(ssValue.str(), STATUS_VALUE_X, LINE_2_Y, 1);
 }
 
