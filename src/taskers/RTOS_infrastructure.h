@@ -55,9 +55,11 @@ struct RTOS_infrastructure {
     QueueHandle_t qCharPending;
     QueueHandle_t qConnectionState;
     QueueHandle_t qNetworkStrings[3];
+    QueueHandle_t qStorageQueue;
 
     SemaphoreHandle_t sUpdateGreenhouse;
     SemaphoreHandle_t sUpdateDisplay;
+    SemaphoreHandle_t sWifiConnected;
     EventGroupHandle_t xThingSpeakEvent;
 };
 

@@ -17,7 +17,7 @@
 
 
 #include "uart/PicoOsUart.h"
-#define BUFFER_SIZE 128
+#define BUFFER_SIZE 300
 
 class Logger{
 public:
@@ -32,7 +32,7 @@ private:
     TaskHandle_t mTaskHandle;
     std::shared_ptr<PicoOsUart> mCLI_UART;
     static QueueHandle_t mSyslog_queue;
-    char buffer[256];
+    char buffer[512];
     int offset;
     static uint32_t mLost_Log_event;
     struct debugEvent {

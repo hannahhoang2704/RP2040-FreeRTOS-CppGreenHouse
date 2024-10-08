@@ -11,6 +11,10 @@
 #include "EEPROM.h"
 #include "Storage.h"
 #include "ThingSpeaker.h"
+extern "C" {
+#include "tls_common.h"
+#include "lwip/altcp.h"
+}
 
 extern "C" {
 uint32_t read_runtime_ctr(void) {
@@ -50,6 +54,52 @@ const struct {
 
 using namespace std;
 
+void send_data_callback(TimerHandle_t xTimer) {
+    auto iRTOS = (RTOS_infrastructure *) pvTimerGetTimerID(xTimer);
+    Logger::log("send data to thingspeak\n");
+}
+
+void receive_data_callback(TimerHandle_t xTimer) {
+    auto iRTOS = (RTOS_infrastructure *) pvTimerGetTimerID(xTimer);
+    Logger::log("receive data from talkback\n");
+}
+
+void task_speak(void * params) {
+    auto iRTOS = (RTOS_infrastructure *) params;
+    char PW[MAX_STRING_LEN];
+    char SSID[MAX_STRING_LEN];
+
+    if(xQueuePeek(iRTOS->qNetworkStrings[NEW_SSID], SSID, 0) == pdTRUE){
+        Logger::log("SSID from storage: %s\n", SSID);
+    }else{
+        strcpy(SSID, "Hannah");
+    }
+    if(xQueuePeek(iRTOS->qNetworkStrings[NEW_PW], PW, 0) == pdTRUE){
+        Logger::log("PW: %s from storage\n", PW);
+    }else{
+        strcpy(PW, "abcdehannah");
+    }
+
+    if (cyw43_arch_init()) {
+        Logger::log("Fail to initialize\n");
+    }
+    cyw43_arch_enable_sta_mode();
+    if (cyw43_arch_wifi_connect_timeout_ms(SSID, PW, CYW43_AUTH_WPA2_AES_PSK, 15000)) {
+        Logger::log("failed to connect\n");
+    }
+    Logger::log("Connected to WiFi\n");
+    TimerHandle_t mSendDataTimer = xTimerCreate("SEND_DATA_TO_THINGSPEAK",
+                                  pdMS_TO_TICKS(15000),
+                                  pdTRUE,
+                                  (void *)& iRTOS,
+                                  send_data_callback);
+    TimerHandle_t mReceiveDataTimer = xTimerCreate("RECEIVE_DATA_TO_THINGSPEAK",
+                                     pdMS_TO_TICKS(5000),
+                                     pdTRUE,
+                                     (void *) &iRTOS,
+                                     receive_data_callback);
+}
+
 int main() {
     Logger::log("Boot!\n");
 
@@ -83,6 +133,7 @@ int main() {
 
             .sUpdateGreenhouse = xSemaphoreCreateBinary(),
             .sUpdateDisplay = xSemaphoreCreateBinary(),
+            .sWifiConnected = xSemaphoreCreateBinary(),
             .xThingSpeakEvent = xEventGroupCreate()
     };
 
@@ -103,14 +154,17 @@ int main() {
     vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_PW], "NewPW");
     vQueueAddToRegistry(iRTOS.qStorageQueue, "StorageQueue");
 
+    char ssid[] = "Hannah";
+    char pwd[] = "abcdehannah";
+    char api[] = "9JS2SW0BYBVNSLTC";
     /// taskers
-    new Display(OLED_SDP600_I2C, iRTOS);
-    //new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
+//    new ThingSpeaker(iRTOS, ssid, pwd, api);
+    new Storage(EEPROM_I2C, iRTOS);
     new Logger(CLI_UART);
-    //new Storage(EEPROM_I2C, iRTOS);
+    new Display(OLED_SDP600_I2C, iRTOS);
+    new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
     new SwitchHandler(iRTOS);
-    new ThingSpeaker(iRTOS);
+    xTaskCreate(task_speak,"THINGSPEAK", 8192, (void *) &iRTOS, tskIDLE_PRIORITY + 2, NULL);
 
-    Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();
 }

@@ -14,7 +14,7 @@
 
 
 #define TLS_CLIENT_SERVER        "api.thingspeak.com"
-#define TLS_CLIENT_HTTP_REQUEST  "POST talkbacks/53302/commands/execute.json?api_key=LGSSKNARG3LPLX6R\r\n" \
+#define TLS_CLIENT_HTTP_REQUEST  "POST https://api.thingspeak.com/talkbacks/53302/commands/execute.json?api_key=LGSSKNARG3LPLX6R HTTP/1.1\r\n" \
                                  "Host: " TLS_CLIENT_SERVER "\r\n" \
                                  "Connection: close\r\n" \
                                  "\r\n"
@@ -28,9 +28,8 @@ extern "C" {
 
 class ThingSpeaker {
 public:
-    ThingSpeaker(RTOS_infrastructure iRTOS, const char *wifi_ssid = WIFI_SSID, const char *wifi_pw = WIFI_PASSWORD, const char *thingspeak_api = THING_SPEAK_API);
-
-    static void notify(eNotifyAction eAction, uint32_t note);
+    ThingSpeaker(const RTOS_infrastructure iRtos, const char *wifi_ssid = WIFI_SSID, const char *wifi_pw = WIFI_PASSWORD, const char *thingspeak_api = THING_SPEAK_API);
+//    ThingSpeaker(const char *wifi_ssid = WIFI_SSID, const char *wifi_pw = WIFI_PASSWORD, const char *thingspeak_api = THING_SPEAK_API);
 
 private:
     void speak();
@@ -42,7 +41,7 @@ private:
     void connect_http();
     void send_data();
 
-    static TaskHandle_t mTaskHandle;
+    TaskHandle_t mTaskHandle;
     TimerHandle_t mSendDataTimer;
     TimerHandle_t mReceiveDataTimer;
     RTOS_infrastructure RTOS_infra;
@@ -58,6 +57,7 @@ private:
                               " HTTP/1.1\r\n"
                               "Host: api.thingspeak.com\r\n"
                               "\r\n";
+    void connect_network();
     const char *HTTP_SERVER{"3.224.58.169"};
     const int PORT{80};
     const int CONNECTION_TIMEOUT_MS{1000};
@@ -67,7 +67,6 @@ private:
     const char *mInitSSID;
     const char *mInitPW;
     const char *thing_speak_api;
-    IPStack mIPStack;
 
     static const uint32_t SEND_DATA_TIMER_FREQ{15000};
     static const uint32_t RECEIVE_DATA_TIMER_FREQ{5000};
@@ -80,8 +79,6 @@ private:
     int16_t mFan{0};
     float mHumidity{0};
     float mTemperature{0};
-
-    TLS_CLIENT_T_ *mTLSClient;
 
     err_t mErr;
 };

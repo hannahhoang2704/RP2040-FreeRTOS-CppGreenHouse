@@ -12,7 +12,7 @@ Display::Display(const shared_ptr<PicoI2C> &i2c_sp,
                     "DISPLAY",
                     512,
                     (void *) this,
-                    tskIDLE_PRIORITY + 2,
+                    tskIDLE_PRIORITY + 3,
                     &mTaskHandle) == pdPASS) {
         Logger::log("Created DISPLAY task.\n");
     } else {
