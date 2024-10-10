@@ -54,52 +54,6 @@ const struct {
 
 using namespace std;
 
-void send_data_callback(TimerHandle_t xTimer) {
-    auto iRTOS = (RTOS_infrastructure *) pvTimerGetTimerID(xTimer);
-    Logger::log("send data to thingspeak\n");
-}
-
-void receive_data_callback(TimerHandle_t xTimer) {
-    auto iRTOS = (RTOS_infrastructure *) pvTimerGetTimerID(xTimer);
-    Logger::log("receive data from talkback\n");
-}
-
-void task_speak(void * params) {
-    auto iRTOS = (RTOS_infrastructure *) params;
-    char PW[MAX_STRING_LEN];
-    char SSID[MAX_STRING_LEN];
-
-    if(xQueuePeek(iRTOS->qNetworkStrings[NEW_SSID], SSID, 0) == pdTRUE){
-        Logger::log("SSID from storage: %s\n", SSID);
-    }else{
-        strcpy(SSID, "Hannah");
-    }
-    if(xQueuePeek(iRTOS->qNetworkStrings[NEW_PW], PW, 0) == pdTRUE){
-        Logger::log("PW: %s from storage\n", PW);
-    }else{
-        strcpy(PW, "abcdehannah");
-    }
-
-    if (cyw43_arch_init()) {
-        Logger::log("Fail to initialize\n");
-    }
-    cyw43_arch_enable_sta_mode();
-    if (cyw43_arch_wifi_connect_timeout_ms(SSID, PW, CYW43_AUTH_WPA2_AES_PSK, 15000)) {
-        Logger::log("failed to connect\n");
-    }
-    Logger::log("Connected to WiFi\n");
-    TimerHandle_t mSendDataTimer = xTimerCreate("SEND_DATA_TO_THINGSPEAK",
-                                  pdMS_TO_TICKS(15000),
-                                  pdTRUE,
-                                  (void *)& iRTOS,
-                                  send_data_callback);
-    TimerHandle_t mReceiveDataTimer = xTimerCreate("RECEIVE_DATA_TO_THINGSPEAK",
-                                     pdMS_TO_TICKS(5000),
-                                     pdTRUE,
-                                     (void *) &iRTOS,
-                                     receive_data_callback);
-}
-
 int main() {
     Logger::log("Boot!\n");
 
@@ -158,13 +112,13 @@ int main() {
     char pwd[] = "abcdehannah";
     char api[] = "9JS2SW0BYBVNSLTC";
     /// taskers
-//    new ThingSpeaker(iRTOS, ssid, pwd, api);
-    new Storage(EEPROM_I2C, iRTOS);
-    new Logger(CLI_UART);
-    new Display(OLED_SDP600_I2C, iRTOS);
-    new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
-    new SwitchHandler(iRTOS);
-    xTaskCreate(task_speak,"THINGSPEAK", 8192, (void *) &iRTOS, tskIDLE_PRIORITY + 2, NULL);
+
+    auto thingspeak = std::make_unique<ThingSpeaker>(iRTOS, ssid, pwd, api);
+    auto display = std::make_unique<Display>(OLED_SDP600_I2C, iRTOS);
+    auto greenhouse = std::make_unique<Greenhouse>(rtu_client, OLED_SDP600_I2C, iRTOS);
+    auto logger = std::make_unique<Logger>(CLI_UART);
+    auto storage = std::make_unique<Storage>(EEPROM_I2C, iRTOS);
+    auto switchHandler = std::make_unique<SwitchHandler>(iRTOS);
 
     vTaskStartScheduler();
 }

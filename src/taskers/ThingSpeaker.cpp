@@ -66,21 +66,12 @@ void ThingSpeaker::speak() {
     //wifi connection
     connect_network();
     Logger::log("Connected to WiFi\n");
-//    xSemaphoreGive(RTOS_infra.sWifiConnected);
-//    xTaskCreate(task_storage, "Storage", 256, (void *) this,
-//                tskIDLE_PRIORITY + 1, &mTaskHandle);
-//    if(mTaskHandle != nullptr){
-//        Logger::log("Created STORAGE task.\n");
-//    } else{
-//        Logger::log("Failed to create STORAGE task.\n");
-//    }
     //start timer
     set_iRTOS(RTOS_infra);
     xTimerStart(mSendDataTimer, portMAX_DELAY);
-    xTimerStart(mReceiveDataTimer, portMAX_DELAY);
+//    xTimerStart(mReceiveDataTimer, portMAX_DELAY);
 
     while (true) {
-
         vTaskDelay(100);
     }
 }
@@ -106,24 +97,24 @@ void ThingSpeaker::send_data_callback(TimerHandle_t xTimer) {
     float mHumidity=20.2;
     float mTemperature=24.4;
     Logger::log("Sending data to ThingSpeak\n");
-    if (xQueuePeek(iRTOS->qCO2TargetCurrent, &qCO2TargetCurrent, 0) == pdTRUE) {
-        Logger::log("CO2 Target: %hd\n", qCO2TargetCurrent);
-    }
-    if (xQueuePeek(iRTOS->qCO2Measurement, &mCO2Measurement, 0) == pdTRUE) {
-        Logger::log("CO2 measurement: %f\n", mCO2Measurement);
-    }
-    if (xQueuePeek(iRTOS->qPressure, &mPressure, 0) == pdTRUE) {
-        Logger::log("Pressure: %f\n", mPressure);
-    }
-    if (xQueuePeek(iRTOS->qFan, &mFan, 0) == pdTRUE) {
-        Logger::log("Fan: %hd\n", mFan);
-    }
-    if (xQueuePeek(iRTOS->qHumidity, &mHumidity, 0) == pdTRUE) {
-        Logger::log("Humid: %f\n", mHumidity);
-    }
-    if (xQueuePeek(iRTOS->qTemperature, &mTemperature, 0) == pdTRUE) {
-        Logger::log("Temp: %f\n", mTemperature);
-    }
+//    if (xQueuePeek(iRTOS->qCO2TargetCurrent, &qCO2TargetCurrent, 0) == pdTRUE) {
+//        Logger::log("CO2 Target: %hd\n", qCO2TargetCurrent);
+//    }
+//    if (xQueuePeek(iRTOS->qCO2Measurement, &mCO2Measurement, 0) == pdTRUE) {
+//        Logger::log("CO2 measurement: %f\n", mCO2Measurement);
+//    }
+//    if (xQueuePeek(iRTOS->qPressure, &mPressure, 0) == pdTRUE) {
+//        Logger::log("Pressure: %f\n", mPressure);
+//    }
+//    if (xQueuePeek(iRTOS->qFan, &mFan, 0) == pdTRUE) {
+//        Logger::log("Fan: %hd\n", mFan);
+//    }
+//    if (xQueuePeek(iRTOS->qHumidity, &mHumidity, 0) == pdTRUE) {
+//        Logger::log("Humid: %f\n", mHumidity);
+//    }
+//    if (xQueuePeek(iRTOS->qTemperature, &mTemperature, 0) == pdTRUE) {
+//        Logger::log("Temp: %f\n", mTemperature);
+//    }
     char request[2048];
     const char *REQUEST_FMT = "GET /update?api_key=%s&field1=%hd&field2=%.1f&field3=%.1f&field4=%hd&field5=%.1f&field6=%.1f HTTP/1.1\r\n" \
                                 "Host: api.thingspeak.com\r\n" \
