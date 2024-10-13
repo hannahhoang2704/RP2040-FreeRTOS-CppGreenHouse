@@ -92,7 +92,7 @@ void ThingSpeaker::speak() {
         xQueuePeek(RTOS_infra.qNetworkStrings[NEW_API], thing_speak_api, 0);
         xQueuePeek(RTOS_infra.qNetworkStrings[NEW_PW], mInitPW, 0);
         xQueuePeek(RTOS_infra.qNetworkStrings[NEW_SSID], mInitSSID, 0);
-        Logger::log("Connecting to WiFi... SSID[%s] PW[%s], API %s\n", mInitSSID, mInitPW, thing_speak_api);
+//        Logger::log("Connecting to WiFi... SSID[%s] PW[%s], API %s\n", mInitSSID, mInitPW, thing_speak_api);
         wifi_connected = connect_network();
     }
     //start timer

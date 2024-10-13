@@ -108,16 +108,14 @@ int main() {
     vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_PW], "NewPW");
     vQueueAddToRegistry(iRTOS.qStorageQueue, "StorageQueue");
 
-    char ssid[] = "Hannah";
-    char pwd[] = "abcdehannah";
-    char api[] = "9JS2SW0BYBVNSLTC";
+
     /// taskers
     new Storage(EEPROM_I2C, iRTOS);
     new Display(OLED_SDP600_I2C, iRTOS);
     new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
     new Logger(CLI_UART);
     new SwitchHandler(iRTOS);
-    new ThingSpeaker(iRTOS, ssid, pwd, api);
+    new ThingSpeaker(iRTOS);
 
     vTaskStartScheduler();
 }

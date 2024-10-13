@@ -17,8 +17,6 @@
 class IPStack {
 public:
     IPStack(const char *ssid, const char *pw);
-    IPStack() = default;
-    void connect_wifi(const char *ssid, const char *pw);
     int connect(const char *hostname, int port);
     int connect(uint32_t hostname, int port);
     int read(unsigned char *buffer, int len, int timeout);

@@ -112,14 +112,6 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
         }
 
 
-//        if (sscanf(buf, "%*command_string\":\"%hd", &CO2) == 1) {
-//            xQueueOverwrite(iRTOS.qCO2TargetCurrent, &CO2);
-////            xQueueOverwrite(iRTOS.qCO2TargetPending, &CO2);
-//            xSemaphoreGive(iRTOS.sUpdateDisplay);
-//        } else {
-//            return ERR_VAL;
-//        }
-
         free(buf);
 
         altcp_recved(pcb, p->tot_len);
@@ -258,38 +250,4 @@ bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *serve
 
 void set_iRTOS(struct RTOS_infrastructure RTOSs) {
     iRTOS = RTOSs;
-}
-
-void receive(void *arg, struct altcp_pcb *pcb, struct pbuf *p, err_t err) {
-    tls_client_recv(arg, pcb, p, err);
-}
-
-bool init_tls(TLS_CLIENT_T *tls_client, const char *request, int timeout, const char *server) {
-    struct altcp_tls_config *tls_config = altcp_tls_create_config_client(NULL, 0);
-    assert(tls_config);
-    mbedtls_ssl_conf_authmode((mbedtls_ssl_config *) tls_config, MBEDTLS_SSL_VERIFY_OPTIONAL);
-
-    tls_client = tls_client_init();
-
-    tls_client->http_request = request;
-    tls_client->timeout = timeout;
-
-    if (!tls_client_open(server, tls_client)) {
-        return false;
-    }
-    while (!tls_client->complete) {
-        vTaskDelay(1000);
-    }
-    return tls_client->error == 0;
-}
-
-err_t send(TLS_CLIENT_T *tls_client, const char * server) {
-    if (!tls_client_open(server, tls_client)) {
-        return false;
-    }
-    err_t err = altcp_write(tls_client->pcb, tls_client->http_request, strlen(tls_client->http_request), TCP_WRITE_FLAG_COPY);
-    if (err != ERR_OK) {
-        return tls_client_close(tls_client);
-    }
-    return ERR_OK;
 }
