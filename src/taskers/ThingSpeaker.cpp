@@ -5,8 +5,8 @@
 
 using namespace std;
 
-ThingSpeaker::ThingSpeaker(const RTOS_infrastructure iRtos, const char *wifi_ssid, const char *wifi_pw,
-                           const char *thingspeak_api) :
+ThingSpeaker::ThingSpeaker(const RTOS_infrastructure iRtos, char *wifi_ssid, char *wifi_pw,
+                           char *thingspeak_api) :
         RTOS_infra(iRtos),
         mInitSSID(wifi_ssid),
         mInitPW(wifi_pw),
@@ -48,15 +48,18 @@ void ThingSpeaker::task_speak(void *params) {
     object_ptr->speak();
 }
 
-void ThingSpeaker::connect_network() {
+bool ThingSpeaker::connect_network() {
     if (cyw43_arch_init()) {
         Logger::log("Fail to initialize\n");
+        return false;
     }
     cyw43_arch_enable_sta_mode();
     if (cyw43_arch_wifi_connect_timeout_ms(mInitSSID, mInitPW, CYW43_AUTH_WPA2_AES_PSK, 15000)) {
         Logger::log("failed to connect\n");
+        return false;
     }
     Logger::log("Connected to WiFi\n");
+    return true;
 }
 
 void ThingSpeaker::get_data_to_send() {
@@ -84,8 +87,14 @@ void ThingSpeaker::speak() {
     Logger::log("Initiated\n");
     Logger::log("Connecting to WiFi... SSID[%s] PW[%s], API %s\n", mInitSSID, mInitPW, thing_speak_api);
     //wifi connection
-    connect_network();
-    Logger::log("Connected to WiFi\n");
+    if(xSemaphoreTake(RTOS_infra.sWifiCredentials, portMAX_DELAY) == pdTRUE){
+        Logger::log("Got WiFi credentials from Storage\n");
+        xQueuePeek(RTOS_infra.qNetworkStrings[NEW_API], thing_speak_api, 0);
+        xQueuePeek(RTOS_infra.qNetworkStrings[NEW_PW], mInitPW, 0);
+        xQueuePeek(RTOS_infra.qNetworkStrings[NEW_SSID], mInitSSID, 0);
+        Logger::log("Connecting to WiFi... SSID[%s] PW[%s], API %s\n", mInitSSID, mInitPW, thing_speak_api);
+        wifi_connected = connect_network();
+    }
     //start timer
     set_iRTOS(RTOS_infra);
     xTimerStart(mSendDataTimer, portMAX_DELAY);
@@ -94,47 +103,47 @@ void ThingSpeaker::speak() {
     while (true) {
         mEvents = xEventGroupWaitBits(RTOS_infra.xThingSpeakEvent, bSEND | bRECEIVE | bRECONNECT, pdTRUE, pdFALSE, portMAX_DELAY);
         if (mEvents & bSEND) {
-            Logger::log("Sending data to ThingSpeak\n");
-            get_data_to_send();
-            char request[2048];
-            snprintf(request, 2048, REQUEST_FMT, thing_speak_api,
-             mCO2Target,
-             mCO2Measurement,
-             mPressure,
-             mFan,
-             mHumidity,
-             mTemperature);
-            Logger::log("Sending: %s\n", request);
-            bool pass = run_tls_client_test(NULL, 0, TLS_CLIENT_SERVER, request, TLS_CLIENT_TIMEOUT_SECS);
-            if (pass) {
-                Logger::log("Test passed\n");
-            } else {
-                Logger::log("Test failed\n");
+            if(wifi_connected){
+                Logger::log("Sending data to ThingSpeak\n");
+                get_data_to_send();
+                char request[2048];
+                snprintf(request, 2048, HTTP_THINGSPEAK_REQUEST, thing_speak_api,
+                         mCO2Target,
+                         mCO2Measurement,
+                         mPressure,
+                         mFan,
+                         mHumidity,
+                         mTemperature);
+                Logger::log("Sending: %s\n", request);
+                run_tls_client_test(NULL, 0, TLS_CLIENT_SERVER, request, TLS_CLIENT_TIMEOUT_SECS);
+                xEventGroupClearBits(RTOS_infra.xThingSpeakEvent, bSEND);
             }
-            xEventGroupClearBits(RTOS_infra.xThingSpeakEvent, bSEND);
         }else if(mEvents & bRECEIVE){
-            Logger::log("Receiving data from ThingSpeak\n");
-            bool pass = run_tls_client_test(NULL, 0, TLS_CLIENT_SERVER, TLS_CLIENT_HTTP_REQUEST, 5);
-            if (pass) {
-                Logger::log("Test passed\n");
-            } else {
-                Logger::log("Test failed\n");
+            if(wifi_connected){
+                Logger::log("Receiving data from ThingSpeak\n");
+                bool pass = run_tls_client_test(NULL, 0, TLS_CLIENT_SERVER, HTTP_TALKBACK_REQUEST, TLS_CLIENT_TIMEOUT_SECS);
+                if (pass) {
+                    Logger::log("Test passed\n");
+                } else {
+                    Logger::log("Test failed\n");
+                }
+                xEventGroupClearBits(RTOS_infra.xThingSpeakEvent, bRECEIVE);
             }
-            xEventGroupClearBits(RTOS_infra.xThingSpeakEvent, bRECEIVE);
         }else if(mEvents & bRECONNECT){
             Logger::log("Reconnecting to WiFi\n");
             cyw43_arch_deinit();
             xTimerStop(mSendDataTimer, portMAX_DELAY);
             xTimerStop(mReceiveDataTimer, portMAX_DELAY);
-            memcpy((void *) mInitSSID, RTOS_infra.qNetworkStrings[NEW_SSID], sizeof(mInitSSID));
-            memcpy((void *) mInitPW, RTOS_infra.qNetworkStrings[NEW_PW], sizeof(mInitPW));
-            memcpy((void *) thing_speak_api, RTOS_infra.qNetworkStrings[NEW_API], sizeof(thing_speak_api));
-            connect_network();
+            xQueuePeek(RTOS_infra.qNetworkStrings[NEW_API], thing_speak_api, 0);
+            xQueuePeek(RTOS_infra.qNetworkStrings[NEW_PW], mInitPW, 0);
+            xQueuePeek(RTOS_infra.qNetworkStrings[NEW_SSID], mInitSSID, 0);
+            Logger::log("Connecting to WiFi... SSID[%s] PW[%s], API %s\n", mInitSSID, mInitPW, thing_speak_api);
+            wifi_connected = connect_network();
             xTimerStart(mSendDataTimer, portMAX_DELAY);
             xTimerStart(mReceiveDataTimer, portMAX_DELAY);
             xEventGroupClearBits(RTOS_infra.xThingSpeakEvent, bRECONNECT);
         }
-        vTaskDelay(50);
+        vTaskDelay(30);
     }
 }
 
@@ -144,12 +153,7 @@ void ThingSpeaker::receive_data_callback(TimerHandle_t xTimer) {
 }
 
 void ThingSpeaker::send_data_callback(TimerHandle_t xTimer) {
-    Logger::log("Sending data to ThingSpeak\n");
-    auto mThingSpeakEvent = static_cast<EventGroupHandle_t>(pvTimerGetTimerID(xTimer)); // Corrected casting
-    if (mThingSpeakEvent != nullptr) {
-        xEventGroupSetBits(mThingSpeakEvent, bSEND);
-    } else {
-        Logger::log("Failed to retrieve event group handle\n");
-    }
+    auto mThingSpeakEvent = static_cast<EventGroupHandle_t>(pvTimerGetTimerID(xTimer));
+    xEventGroupSetBits(mThingSpeakEvent, bSEND);
 }
 

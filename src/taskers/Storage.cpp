@@ -56,7 +56,7 @@ void Storage::storage() {
         Logger::log("SSID is stored in eeprom is %s\n", stored_ssid.c_str());
         xQueueOverwrite(iRTOS.qNetworkStrings[NEW_SSID], stored_ssid.c_str());
     }
-
+    xSemaphoreGive(iRTOS.sWifiCredentials);
     while (true) {
         while ((xQueueReceive(iRTOS.qStorageQueue, &storageData, mLostStores > 0 ? 0 : portMAX_DELAY) == pdTRUE)) {
             switch (storageData) {

@@ -12,7 +12,7 @@
 //#define TLS_CLIENT_SERVER        "18.198.188.151"
 #define TLS_CLIENT_SERVER        "api.thingspeak.com"
 #define TLS_CLIENT_HTTP_REQUEST  "GET /talkbacks/52920/commands/COMMAND_ID.json?api_key=371DAWENQKI6J8DD HTTP/1.1\r\n" \
-                                 "Host: " TLS_CLIENT_SERVER "\r\n" \
+                                "Host: " TLS_CLIENT_SERVER "\r\n" \
                                  "Connection: close\r\n" \
                                  "\r\n"
 #define TLS_CLIENT_TIMEOUT_SECS  15

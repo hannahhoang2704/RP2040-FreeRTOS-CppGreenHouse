@@ -59,7 +59,7 @@ struct RTOS_infrastructure {
 
     SemaphoreHandle_t sUpdateGreenhouse;
     SemaphoreHandle_t sUpdateDisplay;
-    SemaphoreHandle_t sWifiConnected;
+    SemaphoreHandle_t sWifiCredentials;
     EventGroupHandle_t xThingSpeakEvent;
 };
 

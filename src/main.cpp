@@ -87,7 +87,7 @@ int main() {
 
             .sUpdateGreenhouse = xSemaphoreCreateBinary(),
             .sUpdateDisplay = xSemaphoreCreateBinary(),
-            .sWifiConnected = xSemaphoreCreateBinary(),
+            .sWifiCredentials = xSemaphoreCreateBinary(),
             .xThingSpeakEvent = xEventGroupCreate()
     };
 
@@ -112,13 +112,12 @@ int main() {
     char pwd[] = "abcdehannah";
     char api[] = "9JS2SW0BYBVNSLTC";
     /// taskers
-
-    auto thingspeak = std::make_unique<ThingSpeaker>(iRTOS, ssid, pwd, api);
-    auto display = std::make_unique<Display>(OLED_SDP600_I2C, iRTOS);
-    auto greenhouse = std::make_unique<Greenhouse>(rtu_client, OLED_SDP600_I2C, iRTOS);
-    auto logger = std::make_unique<Logger>(CLI_UART);
-    auto storage = std::make_unique<Storage>(EEPROM_I2C, iRTOS);
-    auto switchHandler = std::make_unique<SwitchHandler>(iRTOS);
+    new Storage(EEPROM_I2C, iRTOS);
+    new Display(OLED_SDP600_I2C, iRTOS);
+    new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
+    new Logger(CLI_UART);
+    new SwitchHandler(iRTOS);
+    new ThingSpeaker(iRTOS, ssid, pwd, api);
 
     vTaskStartScheduler();
 }

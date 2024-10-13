@@ -92,7 +92,7 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
 
         pbuf_copy_partial(p, buf, p->tot_len, 0);
         buf[p->tot_len] = 0;
-        int16_t CO2=-1000;
+        int16_t CO2;
 //        printf("***\nnew data received from server:\n***\n\n%s\n", buf);
 
         char *command_string = strstr(buf, "\"command_string\":\"");
@@ -102,9 +102,10 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
             if(end){
                 *end = '\0';
                 CO2 = atoi(command_string);
-                if(CO2!=-1000) {
+                if(CO2) {
                     xQueueOverwrite(iRTOS.qCO2TargetCurrent, &CO2);
                     xQueueOverwrite(iRTOS.qCO2TargetPending, &CO2);
+                    xSemaphoreGive(iRTOS.sUpdateDisplay);
                 }
 
             }
