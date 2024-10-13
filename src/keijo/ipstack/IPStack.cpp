@@ -5,13 +5,11 @@
 #include "pico/time.h"
 
 #include "IPStack.h"
-#include "Logger.h"
 
 
 // To remove Pico example debugging functions during refactoring
 //#define DEBUG_printf(x, ...) {}
-//#define DEBUG_printf printf
-#define DEBUG_printf Logger::log
+#define DEBUG_printf printf
 #define DUMP_BYTES(A, B) {}
 
 
@@ -30,22 +28,6 @@ IPStack::IPStack(const char *ssid, const char *pw) : tcp_pcb{nullptr}, dropped{0
     }
 
 }
-
-void IPStack::connect_wifi(const char *ssid, const char *pw) {
-    if (cyw43_arch_init()) {
-        DEBUG_printf("failed to initialise\n");
-        return;
-    }
-    cyw43_arch_enable_sta_mode();
-
-    DEBUG_printf("Connecting to Wi-Fi...\n");
-    if (cyw43_arch_wifi_connect_timeout_ms(ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        DEBUG_printf("Failed to connect.\n");
-    } else {
-        DEBUG_printf("Connected.\n");
-    }
-}
-
 
 int IPStack::connect(uint32_t hostname, int port) {
     return ERR_ARG;
@@ -294,4 +276,5 @@ int IPStack::disconnect() {
     cyw43_arch_lwip_end();
     return err;
 }
+
 
