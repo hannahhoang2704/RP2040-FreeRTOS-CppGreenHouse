@@ -218,8 +218,8 @@ void SwitchHandler::next_phase() {
                             mNetworkStrings[NEW_PW].c_str());
 
                 // TODO: send strings to ThingSpeaker + order reconnection
-
                 Storage::store(PW_str);
+                xEventGroupSetBits(iRTOS.xThingSpeakEvent, bRECONNECT);
 
                 //// consider when and where -- or if the strings should be emptied
                 for (std::string &str: mNetworkStrings) str.clear();

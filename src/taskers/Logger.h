@@ -17,7 +17,7 @@
 
 
 #include "uart/PicoOsUart.h"
-#define BUFFER_SIZE 300
+#define BUFFER_SIZE 256
 
 class Logger{
 public:

@@ -14,7 +14,7 @@
 
 
 #define TLS_CLIENT_SERVER        "api.thingspeak.com"
-#define TLS_CLIENT_HTTP_REQUEST  "POST https://api.thingspeak.com/talkbacks/53302/commands/execute.json?api_key=LGSSKNARG3LPLX6R HTTP/1.1\r\n" \
+#define TLS_CLIENT_HTTP_REQUEST  "GET /talkbacks/53302/commands/execute.json?api_key=LGSSKNARG3LPLX6R HTTP/1.1\r\n" \
                                  "Host: " TLS_CLIENT_SERVER "\r\n" \
                                  "Connection: close\r\n" \
                                  "\r\n"
@@ -29,7 +29,6 @@ extern "C" {
 class ThingSpeaker {
 public:
     ThingSpeaker(const RTOS_infrastructure iRtos, const char *wifi_ssid = WIFI_SSID, const char *wifi_pw = WIFI_PASSWORD, const char *thingspeak_api = THING_SPEAK_API);
-//    ThingSpeaker(const char *wifi_ssid = WIFI_SSID, const char *wifi_pw = WIFI_PASSWORD, const char *thingspeak_api = THING_SPEAK_API);
 
 private:
     void speak();
@@ -58,11 +57,7 @@ private:
                               "Host: api.thingspeak.com\r\n"
                               "\r\n";
     void connect_network();
-    const char *HTTP_SERVER{"3.224.58.169"};
-    const int PORT{80};
-    const int CONNECTION_TIMEOUT_MS{1000};
-    unsigned char rBuffer[2048];
-    int mConnectionError{0};
+    void get_data_to_send();
     std::string mAPI;
     const char *mInitSSID;
     const char *mInitPW;
@@ -79,8 +74,6 @@ private:
     int16_t mFan{0};
     float mHumidity{0};
     float mTemperature{0};
-
-    err_t mErr;
 };
 
 

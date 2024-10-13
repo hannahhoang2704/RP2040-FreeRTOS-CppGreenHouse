@@ -79,7 +79,7 @@ static void tls_client_err(void *arg, err_t err) {
 static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, err_t err) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T *) arg;
     if (!p) {
-        printf("connection closed\n");
+//        printf("connection closed\n");
         return tls_client_close(state);
     }
     if (p->tot_len > 0) {
@@ -92,21 +92,23 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
 
         pbuf_copy_partial(p, buf, p->tot_len, 0);
         buf[p->tot_len] = 0;
-//        int16_t CO2=-1000;
+        int16_t CO2=-1000;
 //        printf("***\nnew data received from server:\n***\n\n%s\n", buf);
 
-//        char *command_string = strstr(buf, "\"command_string\":\"");
-//        if(command_string){
-//            command_string += strlen("\"command_string\":\"");
-//            char *end = strchr(command_string, '"');
-//            if(end){
-//                *end = '\0';
-//                CO2 = atoi(command_string);
-//                printf("New CO2 command from talkbacks: %d\n", CO2);
-//                if(CO2!=1000) xQueueOverwrite(iRTOS.qCO2TargetCurrent, &CO2);
+        char *command_string = strstr(buf, "\"command_string\":\"");
+        if(command_string){
+            command_string += strlen("\"command_string\":\"");
+            char *end = strchr(command_string, '"');
+            if(end){
+                *end = '\0';
+                CO2 = atoi(command_string);
+                if(CO2!=-1000) {
+                    xQueueOverwrite(iRTOS.qCO2TargetCurrent, &CO2);
+                    xQueueOverwrite(iRTOS.qCO2TargetPending, &CO2);
+                }
 
-//            }
-//        }
+            }
+        }
 
 
 //        if (sscanf(buf, "%*command_string\":\"%hd", &CO2) == 1) {
