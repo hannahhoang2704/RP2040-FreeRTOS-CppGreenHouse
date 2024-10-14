@@ -60,7 +60,6 @@ void SwitchHandler::switch_handler() {
         while (xQueueReceive(mIRQ_eventQueue,
                              static_cast<void *>(&mEventData),
                              mLostEvents > 0 ? 0 : portMAX_DELAY) == pdTRUE) {
-            mDisplayNote = 0;
             if (mEventData.gpio == swRotor.mPinA || mEventData.gpio == swRotor.mPinB) {
                 rot_event();
             } else {
@@ -75,7 +74,7 @@ void SwitchHandler::switch_handler() {
 }
 
 void SwitchHandler::rot_event() {
-    if (mEventData.timeStamp - mPrevBackspace > BUTTON_DEBOUNCE) {
+    if (mEventData.timeStamp - mPrevROT_SW > BUTTON_DEBOUNCE) {
         // deduce rotation direction
         mEvent = UNKNOWN;
         if (mEventData.eventMask == GPIO_IRQ_EDGE_FALL) {
@@ -125,6 +124,7 @@ void SwitchHandler::button_event() {
                 break;
             case SW_ROT:
                 backspace();
+                mPrevROT_SW = mEventData.timeStamp;
                 break;
             default:
                 Logger::log("ERROR: who dis gpio %u\n", mEventData.gpio);
@@ -264,7 +264,6 @@ void SwitchHandler::backspace() {
             xSemaphoreGive(iRTOS.sUpdateDisplay);
         }
     }
-    mPrevBackspace = time_us_64();
 }
 
 /* Character Mapping:
@@ -272,7 +271,7 @@ void SwitchHandler::backspace() {
  * '~' (tilde) is the highest reachable character, ignoring rotations above it.
  * Incrementing and decrementing alphabet characters runs through upper- and lowercase characters in pairs,
  * like so: AaBbCcDdEe... and so forth.
- * General order: ['0'..'9'], '.', [Aa..Zz], [rest of the fucking owl]
+ * General order: ['0' .. '9'], '.', [Aa .. Zz], [! .. ~]
  */
 
 /// increment pending character with a modified lexicography

@@ -1,10 +1,12 @@
 //
 // Created by Hanh Hoang on 24.9.2024.
 //
+#include <mutex>
 #include "Logger.h"
 
-QueueHandle_t Logger::mSyslog_queue = xQueueCreate(30, sizeof(debugEvent));
+QueueHandle_t Logger::mSyslog_queue = xQueueCreate(10, sizeof(debugEvent));
 uint32_t Logger::mLost_Log_event = 0;
+Fmutex Logger::mLogAccess;
 
 Logger::Logger(std::shared_ptr<PicoOsUart> uart_sp): mCLI_UART(std::move(uart_sp)){
     vQueueAddToRegistry(mSyslog_queue, "Syslog");
@@ -37,6 +39,9 @@ const char* Logger::get_task_name() {
 }
 
 void Logger::log(const char *format, ...) {
+    if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
+        std::lock_guard<Fmutex> exclusive(mLogAccess);
+    }
     uint64_t timestamp = time_us_64() / 1000000;
     const char *taskName = get_task_name();
     char buf[BUFFER_SIZE];
@@ -52,17 +57,6 @@ void Logger::log(const char *format, ...) {
     if (xQueueSendToBack(mSyslog_queue, &event, 0) == errQUEUE_FULL) {
         ++Logger::mLost_Log_event;
     }
-}
-
-
-void Logger::log(const std::string& string) {
-    const char *buf = string.c_str();
-    debugEvent dbgE{.timestamp = time_us_64() / 1000000, .taskName = get_task_name()};
-    strncpy(dbgE.message, buf, sizeof(dbgE.message) - 1);
-    dbgE.message[sizeof(dbgE.message) - 1] = '\0';
-    if (xQueueSendToBack(mSyslog_queue, &dbgE, 0) == errQUEUE_FULL){
-        ++Logger::mLost_Log_event;
-    };
 }
 
 void Logger::run() {

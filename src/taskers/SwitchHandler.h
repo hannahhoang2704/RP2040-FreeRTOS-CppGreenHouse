@@ -83,10 +83,8 @@ private:
 
     static const uint64_t BUTTON_DEBOUNCE{400000};
     std::map<uint, uint64_t> mPrevEventTimeMap;
-    uint64_t mPrevBackspace{0};
+    uint64_t mPrevROT_SW{0};
     swEvent mPrevRotation{UNKNOWN};
-    uint64_t mPrevDisplayNotificationTime{0};
-    uint32_t mDisplayNote;
 
     /// state data
     const int16_t CO2_INCREMENT{1};

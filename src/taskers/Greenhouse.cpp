@@ -65,15 +65,6 @@ void Greenhouse::passive_update(TimerHandle_t xTimer) {
 
 void Greenhouse::automate_greenhouse() {
     Logger::log("Initiated GREENHOUSE task\n");
-    mFan = aFan.read_power();
-    xQueueOverwrite(iRTOS.qFan, &mFan);
-    if (xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2Target, pdMS_TO_TICKS(1000)) == pdFALSE) {
-        Logger::log("WARNING: qCO2TargetCurrent empty; actuators off\n");
-        mFan = aFan.OFF;
-        aFan.set_power(mFan);
-        xQueueOverwrite(iRTOS.qFan, &mFan);
-        aCO2_Emitter.put_state(false);
-    }
     xTimerStart(mUpdateTimerHandle, portMAX_DELAY);
     while (true) {
         update_sensors();
@@ -111,8 +102,8 @@ void Greenhouse::actuate() {
         Logger::log("WARNING: qCO2TargetCurrent empty; actuators off\n");
         mFan = aFan.OFF;
         aFan.set_power(mFan);
-        xQueueOverwrite(iRTOS.qFan, &mFan);
         aCO2_Emitter.put_state(false);
+        xQueueOverwrite(iRTOS.qFan, &mFan);
         xSemaphoreGive(iRTOS.sUpdateDisplay);
     } else {
         pursue_CO2_target();
@@ -121,14 +112,18 @@ void Greenhouse::actuate() {
 
 void Greenhouse::emergency() {
     Logger::log("EMERGENCY: CO2 Measurement: %5.1f ppm\n");
-    while (!aFan.running() && aFan.read_power() != aFan.MAX_POWER) {
-        aFan.set_power(aFan.MAX_POWER);
-    }
+    mFan = aFan.MAX_POWER;
     xQueueOverwrite(iRTOS.qFan, &mFan);
+    while (!aFan.running() && aFan.read_power() != aFan.MAX_POWER) {
+        aFan.set_power(mFan);
+    }
     while (mCO2Measurement > CO2_FATAL) {
         mCO2Measurement = sCO2.update();
+        mPressure = sPressure.update_SDP610();
         xQueueOverwrite(iRTOS.qCO2Measurement, &mCO2Measurement);
+        xQueueOverwrite(iRTOS.qPressure, &mPressure);
         xSemaphoreGive(iRTOS.sUpdateDisplay);
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
     Logger::log("EMERGENCY OVER: CO2 Measurement: %5.1f ppm\n");
     aFan.set_power(aFan.OFF);
@@ -165,12 +160,13 @@ void Greenhouse::pursue_CO2_target() {
         }
 
         if (!xTimerIsTimerActive(mCO2WaitTimerHandle)) {
-            xTimerChangePeriod(mCO2WaitTimerHandle, pdMS_TO_TICKS(CO2_DIFFUSION_MS), portMAX_DELAY);
-            xTimerStart(mCO2WaitTimerHandle, portMAX_DELAY);
             aCO2_Emitter.put_state(true);
+            Logger::log("CO2 emission open\n");
             vTaskDelay(pdMS_TO_TICKS(2000));
             aCO2_Emitter.put_state(false);
-            Logger::log("CO2 emission open\n");
+            Logger::log("CO2 emission closed\n");
+            xTimerChangePeriod(mCO2WaitTimerHandle, pdMS_TO_TICKS(CO2_DIFFUSION_MS), portMAX_DELAY);
+            xTimerStart(mCO2WaitTimerHandle, portMAX_DELAY);
         }
     } else {
         if (mFan) {

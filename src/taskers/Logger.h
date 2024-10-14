@@ -15,24 +15,26 @@
 #include "queue.h"
 #include "task.h"
 
-
 #include "uart/PicoOsUart.h"
-#define BUFFER_SIZE 128
+#include "Fmutex.h"
+
+#define BUFFER_SIZE 256
 
 class Logger{
 public:
     Logger(std::shared_ptr<PicoOsUart> uart_sp);
     static void log(const char* format, ...);
-    static void log(const std::string &string);
 
 private:
     void run();
     static void logger_task(void * params);
     static const char *get_task_name();
+
     TaskHandle_t mTaskHandle;
     std::shared_ptr<PicoOsUart> mCLI_UART;
     static QueueHandle_t mSyslog_queue;
-    char buffer[256];
+    static Fmutex mLogAccess;
+    char buffer[BUFFER_SIZE];
     int offset;
     static uint32_t mLost_Log_event;
     struct debugEvent {

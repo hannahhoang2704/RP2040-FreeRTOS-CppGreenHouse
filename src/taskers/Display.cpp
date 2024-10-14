@@ -44,19 +44,9 @@ void Display::print_init() {
 }
 
 void Display::update() {
-    uint8_t prevState = mState;
     if (xQueuePeek(iRTOS.qState, &mState, 0) == pdFALSE) {
         Logger::log("WARNING: qState empty\n");
     }
-    if (prevState != mState) {
-        if (mState == STATUS) {
-            mCO2TargetPending = mCO2TargetCurrent;
-        } else {
-            for (std::string &str: mNetworkStrings) str.clear();
-            mNetworkPhase = NEW_API;
-        }
-    }
-
     if (mState == STATUS) {
         print_status_base();
         print_CO2_target();
