@@ -78,11 +78,11 @@ int main() {
             .qTemperature       = xQueueCreate(1, sizeof(float)),
             .qCharPending       = xQueueCreate(1, sizeof(char)),
             .qConnectionState   = xQueueCreate(1, sizeof(uint8_t)),
-            .qNetworkStrings = {
-                    [NEW_API]   = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
-                    [NEW_SSID]  = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
-                    [NEW_PW]    = xQueueCreate(1, sizeof(char[MAX_STRING_LEN]))
-            },
+                .qNetworkStrings = {
+                        [NEW_API]   = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
+                        [NEW_SSID]  = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
+                        [NEW_PW]    = xQueueCreate(1, sizeof(char[MAX_STRING_LEN]))
+                },
             .qStorageQueue = xQueueCreate(5, sizeof(storage_data)),
 
             .sUpdateGreenhouse = xSemaphoreCreateBinary(),
@@ -107,7 +107,6 @@ int main() {
     vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_SSID], "NewSSID");
     vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_PW], "NewPW");
     vQueueAddToRegistry(iRTOS.qStorageQueue, "StorageQueue");
-
 
     /// taskers
     new Storage(EEPROM_I2C, iRTOS);

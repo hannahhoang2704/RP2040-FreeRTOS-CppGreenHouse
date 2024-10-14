@@ -52,9 +52,9 @@ private:
     const int TLS_CLIENT_TIMEOUT_SECS = 15;
     bool connect_network();
     void get_data_to_send();
-    char *mInitSSID;
-    char *mInitPW;
-    char *thing_speak_api;
+    char mInitSSID[MAX_STRING_LEN];
+    char mInitPW[MAX_STRING_LEN];
+    char thing_speak_api[MAX_STRING_LEN];
 
     static const uint32_t SEND_DATA_TIMER_FREQ{15000};
     static const uint32_t RECEIVE_DATA_TIMER_FREQ{5000};

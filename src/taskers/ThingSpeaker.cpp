@@ -7,13 +7,25 @@ using namespace std;
 
 ThingSpeaker::ThingSpeaker(const RTOS_infrastructure iRtos, char *wifi_ssid, char *wifi_pw,
                            char *thingspeak_api) :
-        RTOS_infra(iRtos),
-        mInitSSID(wifi_ssid),
-        mInitPW(wifi_pw),
-        thing_speak_api(thingspeak_api){
+        RTOS_infra(iRtos){
+    strncpy(mInitSSID, wifi_ssid, MAX_STRING_LEN - 1);
+    mInitSSID[MAX_STRING_LEN - 1] = '\0'; // Ensure null-termination
+
+    strncpy(mInitSSID, wifi_ssid, MAX_STRING_LEN - 1);
+    strncpy(mInitPW, wifi_pw, MAX_STRING_LEN - 1);
+    mInitSSID[MAX_STRING_LEN - 1] = '\0'; // Ensure null-termination
+
+    mInitPW[MAX_STRING_LEN - 1] = '\0'; // Ensure null-termination
+
+    strncpy(mInitPW, wifi_pw, MAX_STRING_LEN - 1);
+    mInitPW[MAX_STRING_LEN - 1] = '\0'; // Ensure null-termination
+
+    strncpy(this->thing_speak_api, thingspeak_api, MAX_STRING_LEN - 1);
+    this->thing_speak_api[MAX_STRING_LEN - 1] = '\0';
+
     if (xTaskCreate(task_speak,
                     "THINGSPEAK",
-                    8192,
+                    10240,
                     (void *) this,
                     tskIDLE_PRIORITY + 2,
                     &mTaskHandle) == pdPASS) {
@@ -89,12 +101,21 @@ void ThingSpeaker::speak() {
     //wifi connection
     if(xSemaphoreTake(RTOS_infra.sWifiCredentials, portMAX_DELAY) == pdTRUE){
         Logger::log("Got WiFi credentials from Storage\n");
-        xQueuePeek(RTOS_infra.qNetworkStrings[NEW_API], thing_speak_api, 0);
-        xQueuePeek(RTOS_infra.qNetworkStrings[NEW_PW], mInitPW, 0);
-        xQueuePeek(RTOS_infra.qNetworkStrings[NEW_SSID], mInitSSID, 0);
-//        Logger::log("Connecting to WiFi... SSID[%s] PW[%s], API %s\n", mInitSSID, mInitPW, thing_speak_api);
-        wifi_connected = connect_network();
+        memset(mInitSSID, 0, sizeof(mInitSSID));
+        memset(mInitPW, 0, sizeof(mInitPW));
+        memset(thing_speak_api, 0, sizeof(thing_speak_api));
+        if(xQueuePeek(RTOS_infra.qNetworkStrings[NEW_API], thing_speak_api, 0) ==pdTRUE){
+            Logger::log("Got API %s from Storage\n", thing_speak_api);
+        };
+        if(xQueuePeek(RTOS_infra.qNetworkStrings[NEW_PW], mInitPW, 0) == pdTRUE){
+            Logger::log("Got PW %s from Storage\n", mInitPW);
+        };
+        if(xQueuePeek(RTOS_infra.qNetworkStrings[NEW_SSID], mInitSSID, 0) == pdTRUE){
+            Logger::log("Got SSID %s from Storage\n", mInitSSID);
+        };
+        Logger::log("Connecting to WiFi... SSID[%s] PW[%s], API %s\n", mInitSSID, mInitPW, thing_speak_api);
     }
+    wifi_connected = connect_network();
     //start timer
     set_iRTOS(RTOS_infra);
     xTimerStart(mSendDataTimer, portMAX_DELAY);
@@ -134,6 +155,9 @@ void ThingSpeaker::speak() {
             cyw43_arch_deinit();
             xTimerStop(mSendDataTimer, portMAX_DELAY);
             xTimerStop(mReceiveDataTimer, portMAX_DELAY);
+            memset(mInitSSID, 0, sizeof(mInitSSID));
+            memset(mInitPW, 0, sizeof(mInitPW));
+            memset(thing_speak_api, 0, sizeof(thing_speak_api));
             xQueuePeek(RTOS_infra.qNetworkStrings[NEW_API], thing_speak_api, 0);
             xQueuePeek(RTOS_infra.qNetworkStrings[NEW_PW], mInitPW, 0);
             xQueuePeek(RTOS_infra.qNetworkStrings[NEW_SSID], mInitSSID, 0);
