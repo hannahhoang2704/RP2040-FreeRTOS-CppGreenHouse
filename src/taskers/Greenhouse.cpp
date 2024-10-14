@@ -137,8 +137,8 @@ void Greenhouse::pursue_CO2_target() {
             aCO2_Emitter.put_state(false);
             Logger::log("CO2 emitter off\n");
         }
-        mCO2Change = mCO2Delta - mCO2PrevDelta;
-        if (mCO2Delta + mCO2Change < CO2_FAN_MARGIN) {
+        mCO2ProjectedChange = mCO2Delta - mCO2PrevDelta;
+        if (mCO2Delta + mCO2ProjectedChange < CO2_FAN_MARGIN) {
             mFan = aFan.OFF;
             aFan.set_power(mFan);
             xQueueOverwrite(iRTOS.qFan, &mFan);
@@ -162,7 +162,7 @@ void Greenhouse::pursue_CO2_target() {
         if (!xTimerIsTimerActive(mCO2WaitTimerHandle)) {
             aCO2_Emitter.put_state(true);
             Logger::log("CO2 emission open\n");
-            vTaskDelay(pdMS_TO_TICKS(2000));
+            vTaskDelay(pdMS_TO_TICKS(1000));
             aCO2_Emitter.put_state(false);
             Logger::log("CO2 emission closed\n");
             xTimerChangePeriod(mCO2WaitTimerHandle, pdMS_TO_TICKS(CO2_DIFFUSION_MS), portMAX_DELAY);

@@ -57,13 +57,13 @@ private:
     const float UPDATE_THRESHOLD{1};
 
     const float CO2_FATAL{2000};
-    const float CO2_EXPECTED_EMISSION_RATE_CO2pS{200}; // scientifically tested -- not magic
+    const float CO2_EXPECTED_EMISSION_RATE_CO2pS{200};
     const float CO2_EMISSION_MARGIN{CO2_EXPECTED_EMISSION_RATE_CO2pS};
     const float CO2_EXPECTED_FAN_EFFECT_RATE_CO2_ps{55};
-    const float CO2_FAN_MARGIN{CO2_EXPECTED_FAN_EFFECT_RATE_CO2_ps * 2};
+    const float CO2_FAN_MARGIN{CO2_EXPECTED_EMISSION_RATE_CO2pS + CO2_EXPECTED_FAN_EFFECT_RATE_CO2_ps * 2};
     float mCO2Delta{0};
     float mCO2PrevDelta{0};
-    float mCO2Change{0};
+    float mCO2ProjectedChange{0};
 
     RTOS_infrastructure iRTOS;
 };
