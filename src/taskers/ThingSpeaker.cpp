@@ -127,8 +127,8 @@ void ThingSpeaker::speak() {
             if(wifi_connected){
                 Logger::log("Sending data to ThingSpeak\n");
                 get_data_to_send();
-                char request[2048];
-                snprintf(request, 2048, HTTP_THINGSPEAK_REQUEST, thing_speak_api,
+                char request[THINGSPEAK_REQUEST_SIZE];
+                snprintf(request, THINGSPEAK_REQUEST_SIZE, HTTP_THINGSPEAK_REQUEST, thing_speak_api,
                          mCO2Target,
                          mCO2Measurement,
                          mPressure,

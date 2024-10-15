@@ -50,6 +50,7 @@ private:
                                         "\r\n";
     const char *TLS_CLIENT_SERVER = "api.thingspeak.com";
     const int TLS_CLIENT_TIMEOUT_SECS = 15;
+    const int THINGSPEAK_REQUEST_SIZE = 2048;
     bool connect_network();
     void get_data_to_send();
     char mInitSSID[MAX_STRING_LEN];
