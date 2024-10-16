@@ -15,11 +15,11 @@ Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client, const shar
         aCO2_Emitter(),
         iRTOS(RTOSi) {
     xTaskCreate(task_automate_greenhouse,
-                    "GREENHOUSE",
-                    512,
-                    (void *) this,
-                    tskIDLE_PRIORITY + 3,
-                    &mTaskHandle);
+                "GREENHOUSE",
+                512,
+                (void *) this,
+                tskIDLE_PRIORITY + 3,
+                &mTaskHandle);
     mUpdateTimerHandle = xTimerCreate("GREENHOUSE_UPDATE",
                                       pdMS_TO_TICKS(mTimerFreq),
                                       pdTRUE,
@@ -38,7 +38,9 @@ void Greenhouse::task_automate_greenhouse(void *params) {
 }
 
 void Greenhouse::passive_update(TimerHandle_t xTimer) {
-    xSemaphoreGive(pvTimerGetTimerID(xTimer));
+    if (xSemaphoreGive(pvTimerGetTimerID(xTimer)) == pdFALSE) {
+        Logger::log("[GREENHOUSE] Failed to give sUpdateGreenhouse\n");
+    }
 }
 
 void Greenhouse::automate_greenhouse() {
@@ -68,7 +70,9 @@ void Greenhouse::update_sensors() {
         static_cast<float>(abs(prevPressure - mPressure)) > UPDATE_THRESHOLD ||
         abs(prevHumidity - mHumidity) > UPDATE_THRESHOLD ||
         abs(prevTemperature - mTemperature) > UPDATE_THRESHOLD) {
-        xSemaphoreGive(iRTOS->sUpdateDisplay);
+        if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+            Logger::log("Failed to give DisplayUpdate semaphore\n");
+        }
     }
 }
 
@@ -82,7 +86,9 @@ void Greenhouse::actuate() {
             aFan.set_power(mFan);
             aCO2_Emitter.put_state(false);
             xQueueOverwrite(iRTOS->qFan, &mFan);
-            xSemaphoreGive(iRTOS->sUpdateDisplay);
+            if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                Logger::log("Failed to give sUpdateDisplay\n");
+            }
         } else {
             pursue_CO2_target();
         }
@@ -97,8 +103,14 @@ void Greenhouse::emergency() {
         while (!aFan.running() && aFan.read_power() != aFan.MAX_POWER) {
             aFan.set_power(mFan);
         }
-        xSemaphoreGive(iRTOS->sUpdateDisplay);
+        if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+            Logger::log("Failed to give sUpdateDisplay\n");
+        }
     }
+    if (xSemaphoreGive(iRTOS->sUpdateGreenhouse) == pdFALSE) {
+        Logger::log("Failed to give sUpdateGreenhouse\n");
+    }
+    vTaskDelay(pdMS_TO_TICKS(200));
 }
 
 void Greenhouse::pursue_CO2_target() {
@@ -114,14 +126,18 @@ void Greenhouse::pursue_CO2_target() {
                 mFan = aFan.OFF;
                 aFan.set_power(mFan);
                 xQueueOverwrite(iRTOS->qFan, &mFan);
-                xSemaphoreGive(iRTOS->sUpdateDisplay);
+                if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                    Logger::log("Failed to give UpdateDisplay semaphore\n");
+                }
                 mCO2PrevDelta = mCO2Delta;
                 Logger::log("CO2 target margin reached: T:%hd M:%.1f\n", mCO2Target, mCO2Measurement);
             } else if (mFan != aFan.MAX_POWER / 4) {
                 mFan = aFan.MAX_POWER / 4;
                 aFan.set_power(mFan);
                 xQueueOverwrite(iRTOS->qFan, &mFan);
-                xSemaphoreGive(iRTOS->sUpdateDisplay);
+                if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                    Logger::log("Failed to give sUpdateDisplay\n");
+                }
                 Logger::log("Fan set to: %hd\n", mFan);
             }
         } else if (mCO2Delta < 0) {
@@ -144,7 +160,9 @@ void Greenhouse::pursue_CO2_target() {
                 mFan = aFan.OFF;
                 aFan.set_power(mFan);
                 xQueueOverwrite(iRTOS->qFan, &mFan);
-                xSemaphoreGive(iRTOS->sUpdateDisplay);
+                if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                    Logger::log("Failed to give sUpdateDisplay\n");
+                }
                 Logger::log("Shutting down fan\n");
             }
             if (aCO2_Emitter.get_state()) {

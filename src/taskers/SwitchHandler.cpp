@@ -84,17 +84,23 @@ void SwitchHandler::rot_event() {
                 if (mEvent == ROT_CLOCKWISE && mCO2TargetPending < CO2_MAX) {
                     mCO2TargetPending += CO2_INCREMENT;
                     xQueueOverwrite(iRTOS->qCO2TargetPending, &mCO2TargetPending);
-                    xSemaphoreGive(iRTOS->sUpdateDisplay);
+                    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                        Logger::log("Failed to give sUpdateDisplay\n");
+                    }
                 } else if (mEvent == ROT_COUNTER_CLOCKWISE && mCO2TargetPending > CO2_MIN) {
                     mCO2TargetPending -= CO2_INCREMENT;
                     xQueueOverwrite(iRTOS->qCO2TargetPending, &mCO2TargetPending);
-                    xSemaphoreGive(iRTOS->sUpdateDisplay);
+                    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                        Logger::log("Failed to give sUpdateDisplay\n");
+                    }
                 }
             } else {
                 if ((mEvent == ROT_CLOCKWISE && inc_pending_char()) ||
                     (mEvent == ROT_COUNTER_CLOCKWISE && dec_pending_char())) {
                     xQueueOverwrite(iRTOS->qCharPending, &mCharPending);
-                    xSemaphoreGive(iRTOS->sUpdateDisplay);
+                    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                        Logger::log("Failed to give sUpdateDisplay\n");
+                    }
                 }
             }
         }
@@ -147,7 +153,9 @@ void SwitchHandler::state_toggle() {
         Logger::log("[STATUS => NETWORK]\n");
     }
     xQueueOverwrite(iRTOS->qState, &mState);
-    xSemaphoreGive(iRTOS->sUpdateDisplay);
+    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+        Logger::log("Failed to give sUpdateDisplay\n");
+    }
 }
 
 /// confirm rotated adjustment
@@ -160,8 +168,12 @@ void SwitchHandler::insert() {
             xQueueOverwrite(iRTOS->qCO2TargetCurrent, &mCO2TargetCurrent);
             xQueueOverwrite(iRTOS->qCO2TargetPending, &mCO2TargetPending);
             Storage::store(CO2_target);
-            xSemaphoreGive(iRTOS->sUpdateDisplay);
-            xSemaphoreGive(iRTOS->sUpdateGreenhouse);
+            if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                Logger::log("Failed to give sUpdateDisplay\n");
+            }
+            if (xSemaphoreGive(iRTOS->sUpdateGreenhouse) == pdFALSE) {
+                Logger::log("Failed to give sUpdateGreenhouse\n");
+            }
             Logger::log("[STATUS] CO2 set: %hu\n", mCO2TargetCurrent);
         }
     } else {
@@ -174,7 +186,9 @@ void SwitchHandler::insert() {
             xQueueOverwrite(iRTOS->qNetworkStrings[mNetworkPhase], mNetworkStrings[mNetworkPhase].c_str());
             mCharPending = INIT_CHAR;
             xQueueOverwrite(iRTOS->qCharPending, &mCharPending);
-            xSemaphoreGive(iRTOS->sUpdateDisplay);
+            if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                Logger::log("Failed to give sUpdateDisplay\n");
+            }
         } else {
             Logger::log("String length capped to 61: [%s]\n", mNetworkStrings[mNetworkPhase].c_str());
         }
@@ -188,9 +202,15 @@ void SwitchHandler::next_phase() {
         // Sets CO2 target to "N/A", thus halting any and all actuator behaviour.
         // "Panic button": stop all actuators.
         Logger::log("Omitting CO2Target\n");
-        xQueueReceive(iRTOS->qCO2TargetCurrent, &mCO2TargetCurrent, 0);
-        xSemaphoreGive(iRTOS->sUpdateDisplay);
-        xSemaphoreGive(iRTOS->sUpdateGreenhouse);
+        if (xQueueReceive(iRTOS->qCO2TargetCurrent, &mCO2TargetCurrent, 0) == pdFALSE) {
+            Logger::log("qCO2TargetCurrent already empty");
+        }
+        if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+            Logger::log("Failed to give sUpdateDisplay\n");
+        }
+        if (xSemaphoreGive(iRTOS->sUpdateGreenhouse) == pdFALSE) {
+            Logger::log("Failed to give sUpdateGreenhouse\n");
+        }
     } else {
         switch (mNetworkPhase) {
             case NEW_API:
@@ -230,7 +250,9 @@ void SwitchHandler::next_phase() {
                 xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
                 break;
         }
-        xSemaphoreGive(iRTOS->sUpdateDisplay);
+        if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+            Logger::log("Failed to give sUpdateDisplay\n");
+        }
     }
 }
 
@@ -242,14 +264,18 @@ void SwitchHandler::backspace() {
     if (mState == STATUS) {
         mCO2TargetPending = mCO2TargetCurrent;
         xQueueOverwrite(iRTOS->qCO2TargetPending, &mCO2TargetPending);
-        xSemaphoreGive(iRTOS->sUpdateDisplay);
+        if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+            Logger::log("Failed to give sUpdateDisplay\n");
+        }
         Logger::log("[STATUS] CO2 reset: %hu\n", mCO2TargetCurrent);
     } else {
         if (mNetworkStrings[mNetworkPhase].empty()) {
             if (mNetworkPhase != NEW_API) {
                 mNetworkPhase = mNetworkPhase == NEW_SSID ? NEW_API : NEW_SSID;
                 xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
-                xSemaphoreGive(iRTOS->sUpdateDisplay);
+                if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                    Logger::log("Failed to give sUpdateDisplay\n");
+                }
             }
         } else {
             mNetworkStrings[mNetworkPhase].pop_back();
@@ -261,7 +287,9 @@ void SwitchHandler::backspace() {
             xQueueOverwrite(iRTOS->qNetworkStrings[mNetworkPhase], mNetworkStrings[mNetworkPhase].c_str());
             mCharPending = INIT_CHAR;
             xQueueOverwrite(iRTOS->qCharPending, &mCharPending);
-            xSemaphoreGive(iRTOS->sUpdateDisplay);
+            if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                Logger::log("Failed to give sUpdateDisplay\n");
+            }
         }
     }
 }

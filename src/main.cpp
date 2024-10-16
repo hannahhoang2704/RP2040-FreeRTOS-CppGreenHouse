@@ -89,7 +89,7 @@ int main() {
     vQueueAddToRegistry(iRTOS.qNetworkPhase, "NetworkCredentials");
     vQueueAddToRegistry(iRTOS.qCO2TargetPending, "CO2TargetPending");
     vQueueAddToRegistry(iRTOS.qCO2TargetCurrent, "CO2TargetCurrent");
-    vQueueAddToRegistry(iRTOS.qCO2Measurement, "qCO2Measurement");
+    vQueueAddToRegistry(iRTOS.qCO2Measurement, "CO2Measurement");
     vQueueAddToRegistry(iRTOS.qPressure, "Pressure");
     vQueueAddToRegistry(iRTOS.qFan, "Fan");
     vQueueAddToRegistry(iRTOS.qHumidity, "Humidity");

@@ -40,6 +40,8 @@ void Storage::storage() {
         if (mCO2Target >= CO2_MIN && mCO2Target <= CO2_MAX) {
             xQueueOverwrite(iRTOS->qCO2TargetCurrent, &mCO2Target);
             xQueueOverwrite(iRTOS->qCO2TargetPending, &mCO2Target);
+        } else {
+            Logger::log("Stored CO2 target out of bounds\n");
         }
     }
 
@@ -49,14 +51,20 @@ void Storage::storage() {
     if (mEEPROM.get_str(EEPROM::API_ADDR, stored_api)) {
         Logger::log("IP is stored in eeprom is %s\n", stored_api.c_str());
         xQueueOverwrite(iRTOS->qNetworkStrings[NEW_API], stored_api.c_str());
+    } else {
+        Logger::log("API crc failed\n");
     }
     if (mEEPROM.get_str(EEPROM::PW_ADDR, stored_pw)) {
         Logger::log("PW is stored in eeprom is %s\n", stored_pw.c_str());
         xQueueOverwrite(iRTOS->qNetworkStrings[NEW_PW], stored_pw.c_str());
+    } else {
+        Logger::log("PW crc failed\n");
     }
     if (mEEPROM.get_str(EEPROM::USERNAME_ADDR, stored_ssid)) {
         Logger::log("SSID is stored in eeprom is %s\n", stored_ssid.c_str());
         xQueueOverwrite(iRTOS->qNetworkStrings[NEW_SSID], stored_ssid.c_str());
+    } else {
+        Logger::log("SSID crc failed\n");
     }
 
     while (true) {
