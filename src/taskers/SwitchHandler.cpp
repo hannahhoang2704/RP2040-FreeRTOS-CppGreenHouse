@@ -29,11 +29,11 @@ SwitchHandler::SwitchHandler(const RTOS_infrastructure *RTOSi) :
         iRTOS(RTOSi) {
     mIRQ_eventQueue = iRTOS->qSwitchIRQ;
     xTaskCreate(task_switch_handler,
-                    "SW_HANDLER",
-                    512,
-                    (void *) this,
-                    tskIDLE_PRIORITY + 2,
-                    &mTaskHandle);
+                "SW_HANDLER",
+                512,
+                (void *) this,
+                tskIDLE_PRIORITY + 2,
+                &mTaskHandle);
 }
 
 void SwitchHandler::task_switch_handler(void *params) {
@@ -70,7 +70,7 @@ void SwitchHandler::switch_handler() {
 }
 
 void SwitchHandler::rot_event() {
-    if (mEventData.timeStamp - mPrevROT_SW > BUTTON_DEBOUNCE) {
+    if (mEventData.timeStamp - mPrevSW_ROT > BUTTON_DEBOUNCE) {
         // deduce rotation direction
         mEvent = UNKNOWN;
         if (mEventData.eventMask == GPIO_IRQ_EDGE_FALL) {
@@ -122,11 +122,15 @@ void SwitchHandler::button_event() {
                 insert();
                 break;
             case SW_0:
-                next_phase();
+                if (mState == STATUS) {
+                    omit_CO2_target();
+                } else if (mState == NETWORK) {
+                    next_phase();
+                }
                 break;
             case SW_ROT:
                 backspace();
-                mPrevROT_SW = mEventData.timeStamp;
+                mPrevSW_ROT = mEventData.timeStamp;
                 break;
             default:
                 Logger::log("ERROR: who dis gpio %u\n", mEventData.gpio);
@@ -135,17 +139,16 @@ void SwitchHandler::button_event() {
     }
 }
 
-/// change system state -- status or relog
-// changing system state resets pending string input
+/// toggle screen / system state between status and network
 void SwitchHandler::state_toggle() {
     mState = mState == STATUS ? NETWORK : STATUS;
     if (mState == STATUS) {
         mCharPending = INIT_CHAR;
         mNetworkPhase = NEW_API;
         xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
-
         Logger::log("[NETWORK => STATUS]\n");
     } else {
+        /// TODO: with ThingSpeaker: reconsider NetworkStrings' handling during and after reconnection
         for (std::string &str: mNetworkStrings) str.clear();
         xQueueOverwrite(iRTOS->qNetworkStrings[NEW_API], mNetworkStrings[NEW_API].c_str());
         xQueueOverwrite(iRTOS->qNetworkStrings[NEW_SSID], mNetworkStrings[NEW_SSID].c_str());
@@ -158,9 +161,9 @@ void SwitchHandler::state_toggle() {
     }
 }
 
-/// confirm rotated adjustment
+/// confirm pending rotation position
 // status = CO2 target
-// relog = character to string
+// network = append character to string
 void SwitchHandler::insert() {
     if (mState == STATUS) {
         if (mCO2TargetCurrent != mCO2TargetPending) {
@@ -183,6 +186,7 @@ void SwitchHandler::insert() {
                         mNetworkStrings[NEW_API].c_str(),
                         mNetworkStrings[NEW_SSID].c_str(),
                         mNetworkStrings[NEW_PW].c_str());
+            /// TODO: with ThingSpeaker: reconsider NetworkStrings' handling during and after reconnection
             xQueueOverwrite(iRTOS->qNetworkStrings[mNetworkPhase], mNetworkStrings[mNetworkPhase].c_str());
             mCharPending = INIT_CHAR;
             xQueueOverwrite(iRTOS->qCharPending, &mCharPending);
@@ -195,70 +199,69 @@ void SwitchHandler::insert() {
     }
 }
 
-/// confirm a series of confirmed rotated adjustments
-// applies only (?) in relog state when confirming string, moving then on to the next phase
+// confirm credential strings, moving then on to the next credential string
+// - if current phase is the last: prompt ThingSpeaker to send reconnect
 void SwitchHandler::next_phase() {
-    if (mState == STATUS) {
-        // Sets CO2 target to "N/A", thus halting any and all actuator behaviour.
-        // "Panic button": stop all actuators.
-        Logger::log("Omitting CO2Target\n");
-        if (xQueueReceive(iRTOS->qCO2TargetCurrent, &mCO2TargetCurrent, 0) == pdFALSE) {
-            Logger::log("qCO2TargetCurrent already empty");
-        }
-        if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
-            Logger::log("Failed to give sUpdateDisplay\n");
-        }
-        if (xSemaphoreGive(iRTOS->sUpdateGreenhouse) == pdFALSE) {
-            Logger::log("Failed to give sUpdateGreenhouse\n");
-        }
-    } else {
-        switch (mNetworkPhase) {
-            case NEW_API:
-                Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
-                            mNetworkStrings[NEW_API].c_str(),
-                            mNetworkStrings[NEW_SSID].c_str(),
-                            mNetworkStrings[NEW_PW].c_str());
-                Storage::store(API_str);
-                mNetworkPhase = NEW_SSID;
-                xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
-                break;
-            case NEW_SSID:
-                Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
-                            mNetworkStrings[NEW_API].c_str(),
-                            mNetworkStrings[NEW_SSID].c_str(),
-                            mNetworkStrings[NEW_PW].c_str());
-                Storage::store(SSID_str);
-                mNetworkPhase = NEW_PW;
-                xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
-                break;
-            case NEW_PW:
-                Logger::log("[NETWORK] Connect with: API[%s] UN[%s] PW[%s]\n",
-                            mNetworkStrings[NEW_API].c_str(),
-                            mNetworkStrings[NEW_SSID].c_str(),
-                            mNetworkStrings[NEW_PW].c_str());
+    switch (mNetworkPhase) {
+        case NEW_API:
+            Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
+                        mNetworkStrings[NEW_API].c_str(),
+                        mNetworkStrings[NEW_SSID].c_str(),
+                        mNetworkStrings[NEW_PW].c_str());
+            Storage::store(API_str);
+            mNetworkPhase = NEW_SSID;
+            xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
+            break;
+        case NEW_SSID:
+            Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
+                        mNetworkStrings[NEW_API].c_str(),
+                        mNetworkStrings[NEW_SSID].c_str(),
+                        mNetworkStrings[NEW_PW].c_str());
+            Storage::store(SSID_str);
+            mNetworkPhase = NEW_PW;
+            xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
+            break;
+        case NEW_PW:
+            Logger::log("[NETWORK] Connect with: API[%s] UN[%s] PW[%s]\n",
+                        mNetworkStrings[NEW_API].c_str(),
+                        mNetworkStrings[NEW_SSID].c_str(),
+                        mNetworkStrings[NEW_PW].c_str());
 
-                // TODO: send strings to ThingSpeaker + order reconnection
+            Storage::store(PW_str);
 
-                Storage::store(PW_str);
+            // TODO: order ThingSpeaker to reconnect
+            // TODO: consider how are qNetworkStrings are handled during and after reconnection
 
-                //// consider when and where -- or if the strings should be emptied
-                for (std::string &str: mNetworkStrings) str.clear();
+            for (std::string &str: mNetworkStrings) str.clear();
 
-                mState = STATUS;
-                mNetworkPhase = NEW_API;
-                xQueueOverwrite(iRTOS->qState, &mState);
-                xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
-                break;
-        }
-        if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
-            Logger::log("Failed to give sUpdateDisplay\n");
-        }
+            mState = STATUS;
+            mNetworkPhase = NEW_API;
+            xQueueOverwrite(iRTOS->qState, &mState);
+            xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
+            break;
+    }
+    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+        Logger::log("Failed to give sUpdateDisplay\n");
+    }
+}
+
+// omit current CO2 target, halting CO2 target pursuit
+void SwitchHandler::omit_CO2_target() {
+    Logger::log("Omitting CO2Target\n");
+    if (xQueueReceive(iRTOS->qCO2TargetCurrent, &mCO2TargetCurrent, 0) == pdFALSE) {
+        Logger::log("qCO2TargetCurrent already empty");
+    }
+    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+        Logger::log("Failed to give sUpdateDisplay\n");
+    }
+    if (xSemaphoreGive(iRTOS->sUpdateGreenhouse) == pdFALSE) {
+        Logger::log("Failed to give sUpdateGreenhouse\n");
     }
 }
 
 /// backspace
 // status = resets pending user input (CO2 target) to current CO2 target
-// relog = remove last character from string corresponding to the phase
+// network = remove last character from string corresponding to the phase
 //  - If pending string is empty, move back to previous phase. If current phase is the first phase, ignore.
 void SwitchHandler::backspace() {
     if (mState == STATUS) {
@@ -298,7 +301,7 @@ void SwitchHandler::backspace() {
  * '0' (zero) is the lowest reachable character, ignoring rotations below it.
  * '~' (tilde) is the highest reachable character, ignoring rotations above it.
  * Incrementing and decrementing alphabet characters runs through upper- and lowercase characters in pairs,
- * like so: AaBbCcDdEe... and so forth.
+ * like so: AaBbCcDdEe... Zz.
  * General order: ['0' .. '9'], '.', [Aa .. Zz], [! .. ~]
  */
 

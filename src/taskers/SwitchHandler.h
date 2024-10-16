@@ -45,6 +45,7 @@ private:
     void state_toggle();
     void insert();
     void next_phase();
+    void omit_CO2_target();
     void backspace();
 
     bool inc_pending_char();
@@ -79,7 +80,7 @@ private:
 
     static const uint64_t BUTTON_DEBOUNCE{400000};
     std::map<uint, uint64_t> mPrevEventTimeMap;
-    uint64_t mPrevROT_SW{0};
+    uint64_t mPrevSW_ROT{0};
     swEvent mPrevRotation{UNKNOWN};
 
     /// state data
