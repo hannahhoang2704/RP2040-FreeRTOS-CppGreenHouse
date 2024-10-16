@@ -39,7 +39,7 @@ const char *Logger::get_task_name() {
 
 void Logger::log(const char *format, ...) {
     if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
-        std::lock_guard<Fmutex> exclusive(mLogAccess);
+        mLogAccess.lock();
     }
     uint64_t timestamp = time_us_64() / 1000000;
     const char *taskName = get_task_name();
@@ -55,6 +55,9 @@ void Logger::log(const char *format, ...) {
     event.message[sizeof(event.message) - 1] = '\0';
     if (xQueueSendToBack(mSyslog_queue, &event, 0) == errQUEUE_FULL) {
         ++Logger::mLost_Log_event;
+    }
+    if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
+        mLogAccess.unlock();
     }
 }
 
