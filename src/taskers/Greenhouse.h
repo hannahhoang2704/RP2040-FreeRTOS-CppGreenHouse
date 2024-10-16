@@ -21,7 +21,9 @@ enum greenhouse_notifications {
 
 class Greenhouse {
 public:
-    Greenhouse(const std::shared_ptr<ModbusClient> &modbus_client, const std::shared_ptr<PicoI2C> &pressure_sensor_I2C, RTOS_infrastructure RTOSi);
+    Greenhouse(const std::shared_ptr<ModbusClient> &modbus_client,
+               const std::shared_ptr<PicoI2C> &pressure_sensor_I2C,
+               const RTOS_infrastructure * RTOSi);
 
 private:
     void automate_greenhouse();
@@ -66,7 +68,7 @@ private:
     float mCO2PrevDelta{0};
     float mCO2ProjectedChange{0};
 
-    RTOS_infrastructure iRTOS;
+    const RTOS_infrastructure * iRTOS;
 };
 
 #endif //RP2040_FREERTOS_IRQ_GREENHOUSE_H

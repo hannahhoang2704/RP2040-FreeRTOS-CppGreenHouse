@@ -16,7 +16,7 @@
 
 class SwitchHandler {
 public:
-    SwitchHandler(RTOS_infrastructure RTOSi);
+    SwitchHandler(const RTOS_infrastructure * RTOSi);
 
     static void irq_handler(uint gpio, uint32_t event_mask);
 
@@ -98,7 +98,7 @@ private:
     std::vector<std::string> mNetworkStrings{"", "", ""};
 
     /// RTOS infrastructure
-    RTOS_infrastructure iRTOS;
+    const RTOS_infrastructure * iRTOS;
 };
 
 

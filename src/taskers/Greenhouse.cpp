@@ -9,7 +9,7 @@ using namespace std;
 void null_timer(TimerHandle_t xTimer) {};
 
 Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client, const shared_ptr<PicoI2C> &pressure_sensor_I2C,
-                       RTOS_infrastructure RTOSi) :
+                       const RTOS_infrastructure * RTOSi) :
         sCO2(modbus_client),
         sHumidity(modbus_client),
         sTemperature(modbus_client),
@@ -30,7 +30,7 @@ Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client, const shar
     mUpdateTimerHandle = xTimerCreate("GREENHOUSE_UPDATE",
                                       pdMS_TO_TICKS(mTimerFreq),
                                       pdTRUE,
-                                      iRTOS.sUpdateGreenhouse,
+                                      iRTOS->sUpdateGreenhouse,
                                       Greenhouse::passive_update);
     if (mUpdateTimerHandle != nullptr) {
         Logger::log("Created GREENHOUSE_UPDATE timer\n");
@@ -69,7 +69,7 @@ void Greenhouse::automate_greenhouse() {
     while (true) {
         update_sensors();
         actuate();
-        xSemaphoreTake(iRTOS.sUpdateGreenhouse, portMAX_DELAY);
+        xSemaphoreTake(iRTOS->sUpdateGreenhouse, portMAX_DELAY);
     }
 }
 
@@ -82,15 +82,15 @@ void Greenhouse::update_sensors() {
     mPressure = sPressure.update_SDP610();
     mHumidity = sHumidity.update();
     mTemperature = sTemperature.update_all();
-    xQueueOverwrite(iRTOS.qCO2Measurement, &mCO2Measurement);
-    xQueueOverwrite(iRTOS.qPressure, &mPressure);
-    xQueueOverwrite(iRTOS.qHumidity, &mHumidity);
-    xQueueOverwrite(iRTOS.qTemperature, &mTemperature);
+    xQueueOverwrite(iRTOS->qCO2Measurement, &mCO2Measurement);
+    xQueueOverwrite(iRTOS->qPressure, &mPressure);
+    xQueueOverwrite(iRTOS->qHumidity, &mHumidity);
+    xQueueOverwrite(iRTOS->qTemperature, &mTemperature);
     if (abs(prevCO2 - mCO2Measurement)                 > UPDATE_THRESHOLD ||
         static_cast<float>(abs(prevPressure - mPressure)) > UPDATE_THRESHOLD ||
         abs(prevHumidity - mHumidity)                  > UPDATE_THRESHOLD ||
         abs(prevTemperature - mTemperature)            > UPDATE_THRESHOLD) {
-        xSemaphoreGive(iRTOS.sUpdateDisplay);
+        xSemaphoreGive(iRTOS->sUpdateDisplay);
     }
 }
 
@@ -98,13 +98,13 @@ void Greenhouse::actuate() {
     if (mCO2Measurement > CO2_FATAL) {
         emergency();
     } else {
-        if (xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2Target, 0) == pdFALSE) {
+        if (xQueuePeek(iRTOS->qCO2TargetCurrent, &mCO2Target, 0) == pdFALSE) {
             Logger::log("WARNING: qCO2TargetCurrent empty; actuators off\n");
             mFan = aFan.OFF;
             aFan.set_power(mFan);
             aCO2_Emitter.put_state(false);
-            xQueueOverwrite(iRTOS.qFan, &mFan);
-            xSemaphoreGive(iRTOS.sUpdateDisplay);
+            xQueueOverwrite(iRTOS->qFan, &mFan);
+            xSemaphoreGive(iRTOS->sUpdateDisplay);
         } else {
             pursue_CO2_target();
         }
@@ -115,11 +115,11 @@ void Greenhouse::emergency() {
     Logger::log("EMERGENCY: CO2 Measurement: %5.1f ppm\n");
     if (mFan != aFan.MAX_POWER) {
         mFan = aFan.MAX_POWER;
-        xQueueOverwrite(iRTOS.qFan, &mFan);
+        xQueueOverwrite(iRTOS->qFan, &mFan);
         while (!aFan.running() && aFan.read_power() != aFan.MAX_POWER) {
             aFan.set_power(mFan);
         }
-        xSemaphoreGive(iRTOS.sUpdateDisplay);
+        xSemaphoreGive(iRTOS->sUpdateDisplay);
     }
 }
 
@@ -135,15 +135,15 @@ void Greenhouse::pursue_CO2_target() {
             if (mCO2Delta + mCO2ProjectedChange < CO2_FAN_MARGIN) {
                 mFan = aFan.OFF;
                 aFan.set_power(mFan);
-                xQueueOverwrite(iRTOS.qFan, &mFan);
-                xSemaphoreGive(iRTOS.sUpdateDisplay);
+                xQueueOverwrite(iRTOS->qFan, &mFan);
+                xSemaphoreGive(iRTOS->sUpdateDisplay);
                 mCO2PrevDelta = mCO2Delta;
                 Logger::log("CO2 target margin reached: T:%hd M:%.1f\n", mCO2Target, mCO2Measurement);
             } else if (mFan != aFan.MAX_POWER / 4) {
                 mFan = aFan.MAX_POWER / 4;
                 aFan.set_power(mFan);
-                xQueueOverwrite(iRTOS.qFan, &mFan);
-                xSemaphoreGive(iRTOS.sUpdateDisplay);
+                xQueueOverwrite(iRTOS->qFan, &mFan);
+                xSemaphoreGive(iRTOS->sUpdateDisplay);
                 Logger::log("Fan set to: %hd\n", mFan);
             }
         } else if (mCO2Delta < 0) {
@@ -166,8 +166,8 @@ void Greenhouse::pursue_CO2_target() {
             if (mFan) {
                 mFan = aFan.OFF;
                 aFan.set_power(mFan);
-                xQueueOverwrite(iRTOS.qFan, &mFan);
-                xSemaphoreGive(iRTOS.sUpdateDisplay);
+                xQueueOverwrite(iRTOS->qFan, &mFan);
+                xSemaphoreGive(iRTOS->sUpdateDisplay);
                 Logger::log("Shutting down fan\n");
             }
             if (aCO2_Emitter.get_state()) {

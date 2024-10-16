@@ -14,7 +14,7 @@
 class Display {
 public:
     Display(const std::shared_ptr<PicoI2C> &i2c_sp,
-            RTOS_infrastructure RTOSi);
+            const RTOS_infrastructure *RTOSi);
 
 private:
     void display();
@@ -75,7 +75,7 @@ private:
     std::stringstream ssValue;
 
     /// RTOS infrastructure
-    RTOS_infrastructure iRTOS;
+    const RTOS_infrastructure * iRTOS;
 };
 
 

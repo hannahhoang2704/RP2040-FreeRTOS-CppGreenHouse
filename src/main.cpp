@@ -60,8 +60,7 @@ int main() {
     auto EEPROM_I2C = make_shared<PicoI2C>(I2C0_s.ctrl_nr, I2C0_s.baud);
 
     /// RTOS infrastructure
-    // for passing mutual RTOS infrastructure to requiring taskers
-    const RTOS_infrastructure iRTOS{
+    const RTOS_infrastructure iRTOS {
             .qState             = xQueueCreate(1, sizeof(uint8_t)),
             .qNetworkPhase      = xQueueCreate(1, sizeof(uint8_t)),
             .qCO2TargetPending  = xQueueCreate(1, sizeof(int16_t)),
@@ -74,9 +73,9 @@ int main() {
             .qCharPending       = xQueueCreate(1, sizeof(char)),
             .qConnectionState   = xQueueCreate(1, sizeof(uint8_t)),
             .qNetworkStrings = {
-                    [NEW_API]   = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
-                    [NEW_SSID]  = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
-                    [NEW_PW]    = xQueueCreate(1, sizeof(char[MAX_STRING_LEN]))
+                    [NEW_API]   = xQueueCreate(1, sizeof(char[MAX_CREDENTIAL_STRING_LEN + 1])),
+                    [NEW_SSID]  = xQueueCreate(1, sizeof(char[MAX_CREDENTIAL_STRING_LEN + 1])),
+                    [NEW_PW]    = xQueueCreate(1, sizeof(char[MAX_CREDENTIAL_STRING_LEN + 1]))
             },
             .qStorageQueue = xQueueCreate(5, sizeof(storage_data)),
 
@@ -102,11 +101,11 @@ int main() {
     vQueueAddToRegistry(iRTOS.qStorageQueue, "StorageQueue");
 
     /// taskers
-    new Display(OLED_SDP600_I2C, iRTOS);
-    new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
+    new Display(OLED_SDP600_I2C, &iRTOS);
+    new Greenhouse(rtu_client, OLED_SDP600_I2C, &iRTOS);
     new Logger(CLI_UART);
-    new Storage(EEPROM_I2C, iRTOS);
-    new SwitchHandler(iRTOS);
+    new Storage(EEPROM_I2C, &iRTOS);
+    new SwitchHandler(&iRTOS);
 
     Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();

@@ -7,7 +7,7 @@
 const int16_t CO2_MAX{1500};
 const int16_t CO2_MIN{0};
 const char INIT_CHAR{'.'};
-const char MAX_STRING_LEN{64};
+const uint MAX_CREDENTIAL_STRING_LEN{61};
 
 enum program_state {
     STATUS,
