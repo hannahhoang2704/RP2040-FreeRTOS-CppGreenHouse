@@ -77,10 +77,12 @@ int main() {
                     [NEW_SSID]  = xQueueCreate(1, sizeof(char[MAX_CREDENTIAL_STRING_LEN + 1])),
                     [NEW_PW]    = xQueueCreate(1, sizeof(char[MAX_CREDENTIAL_STRING_LEN + 1]))
             },
-            .qStorageQueue = xQueueCreate(5, sizeof(storage_data)),
+            .qSyslog            = xQueueCreate(10, sizeof(Logger::debugEvent)),
+            .qStorageQueue      = xQueueCreate(5,  sizeof(storage_data)),
+            .qSwitchIRQ         = xQueueCreate(10, sizeof(SwitchHandler::button_irq_event_data)),
 
-            .sUpdateGreenhouse = xSemaphoreCreateBinary(),
-            .sUpdateDisplay = xSemaphoreCreateBinary()
+            .sUpdateGreenhouse  = xSemaphoreCreateBinary(),
+            .sUpdateDisplay     = xSemaphoreCreateBinary()
     };
 
     // register all the queues
@@ -98,12 +100,14 @@ int main() {
     vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_API], "NewAPI");
     vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_SSID], "NewSSID");
     vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_PW], "NewPW");
+    vQueueAddToRegistry(iRTOS.qSyslog, "SystemLog");
     vQueueAddToRegistry(iRTOS.qStorageQueue, "StorageQueue");
+    vQueueAddToRegistry(iRTOS.qSwitchIRQ, "SW_IRQ");
 
     /// taskers
     new Display(OLED_SDP600_I2C, &iRTOS);
     new Greenhouse(rtu_client, OLED_SDP600_I2C, &iRTOS);
-    new Logger(CLI_UART);
+    new Logger(CLI_UART, &iRTOS);
     new Storage(EEPROM_I2C, &iRTOS);
     new SwitchHandler(&iRTOS);
 

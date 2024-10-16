@@ -7,14 +7,18 @@
 uint Storage::mLostStores{0};
 QueueHandle_t Storage::qStorage{nullptr};
 
-Storage::Storage(const std::shared_ptr<PicoI2C>&i2c_sp, const RTOS_infrastructure * RTOS_infrastructure):
-    mEEPROM(i2c_sp),
-    iRTOS(RTOS_infrastructure) {
-    xTaskCreate(task_storage, "Storage", 256, (void *) this,
-                tskIDLE_PRIORITY + 1, &mTaskHandle);
-    if(mTaskHandle != nullptr){
+Storage::Storage(const std::shared_ptr<PicoI2C> &i2c_sp, const RTOS_infrastructure *RTOS_infrastructure) :
+        mEEPROM(i2c_sp),
+        iRTOS(RTOS_infrastructure) {
+    vQueueAddToRegistry(qStorage, "Storage");
+    xTaskCreate(task_storage,
+                "Storage",
+                256, (void *) this,
+                tskIDLE_PRIORITY + 1,
+                &mTaskHandle);
+    if (mTaskHandle != nullptr) {
         Logger::log("Created STORAGE task.\n");
-    } else{
+    } else {
         Logger::log("Failed to create STORAGE task.\n");
     }
     qStorage = iRTOS->qStorageQueue;
@@ -26,16 +30,16 @@ void Storage::task_storage(void *params) {
 }
 
 void Storage::store(storage_data command) {
-    if(xQueueSendToBack(qStorage, &command , pdMS_TO_TICKS(1000)) != pdPASS) {
+    if (xQueueSendToBack(qStorage, &command, pdMS_TO_TICKS(1000)) != pdPASS) {
         ++mLostStores;
     }
 }
 
 void Storage::storage() {
     mEEPROM.set_log_index_value();
-    if(mEEPROM.get(EEPROM::CO2_TARGET_ADDR, mCO2Target)){
+    if (mEEPROM.get(EEPROM::CO2_TARGET_ADDR, mCO2Target)) {
         Logger::log("Stored CO2 target is %d\n", mCO2Target);
-        if(mCO2Target >= CO2_MIN && mCO2Target <= CO2_MAX){
+        if (mCO2Target >= CO2_MIN && mCO2Target <= CO2_MAX) {
             xQueueOverwrite(iRTOS->qCO2TargetCurrent, &mCO2Target);
             xQueueOverwrite(iRTOS->qCO2TargetPending, &mCO2Target);
         }
@@ -44,15 +48,15 @@ void Storage::storage() {
     std::string stored_api;
     std::string stored_pw;
     std::string stored_ssid;
-    if(mEEPROM.get_str(EEPROM::API_ADDR, stored_api)){
+    if (mEEPROM.get_str(EEPROM::API_ADDR, stored_api)) {
         Logger::log("IP is stored in eeprom is %s\n", stored_api.c_str());
         xQueueOverwrite(iRTOS->qNetworkStrings[NEW_API], stored_api.c_str());
     }
-    if(mEEPROM.get_str(EEPROM::PW_ADDR, stored_pw)){
+    if (mEEPROM.get_str(EEPROM::PW_ADDR, stored_pw)) {
         Logger::log("PW is stored in eeprom is %s\n", stored_pw.c_str());
         xQueueOverwrite(iRTOS->qNetworkStrings[NEW_PW], stored_pw.c_str());
     }
-    if(mEEPROM.get_str(EEPROM::USERNAME_ADDR, stored_ssid)){
+    if (mEEPROM.get_str(EEPROM::USERNAME_ADDR, stored_ssid)) {
         Logger::log("SSID is stored in eeprom is %s\n", stored_ssid.c_str());
         xQueueOverwrite(iRTOS->qNetworkStrings[NEW_SSID], stored_ssid.c_str());
     }

@@ -4,14 +4,18 @@
 #include <mutex>
 #include "Logger.h"
 
-QueueHandle_t Logger::mSyslog_queue = xQueueCreate(10, sizeof(debugEvent));
+QueueHandle_t Logger::mSyslog_queue = nullptr;
 uint32_t Logger::mLost_Log_event = 0;
 Fmutex Logger::mLogAccess;
 
-Logger::Logger(std::shared_ptr<PicoOsUart> uart_sp): mCLI_UART(std::move(uart_sp)){
-    vQueueAddToRegistry(mSyslog_queue, "Syslog");
-    if(xTaskCreate(Logger::logger_task, "logger_task", 512, (void *) this,
-                   tskIDLE_PRIORITY + 1,&mTaskHandle) == pdPASS){
+Logger::Logger(std::shared_ptr<PicoOsUart> uart_sp, const RTOS_infrastructure * RTOSi) : mCLI_UART(std::move(uart_sp)) {
+    mSyslog_queue = RTOSi->qSyslog;
+    if (xTaskCreate(Logger::logger_task,
+                    "logger_task",
+                    512,
+                    (void *) this,
+                    tskIDLE_PRIORITY + 1,
+                    &mTaskHandle) == pdPASS) {
         Logger::log("Created LOGGER task.\n");
     } else {
         Logger::log("Failed to create LOGGER task.\n");
@@ -23,7 +27,7 @@ void Logger::logger_task(void *params) {
     logger->run();
 }
 
-const char* Logger::get_task_name() {
+const char *Logger::get_task_name() {
     const char *taskName;
     if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
         TaskHandle_t currentTask = xTaskGetCurrentTaskHandle();

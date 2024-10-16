@@ -17,14 +17,19 @@
 
 #include "uart/PicoOsUart.h"
 #include "Fmutex.h"
+#include "RTOS_infrastructure.h"
 
 #define BUFFER_SIZE 256
 
 class Logger{
 public:
-    Logger(std::shared_ptr<PicoOsUart> uart_sp);
+    Logger(std::shared_ptr<PicoOsUart> uart_sp, const RTOS_infrastructure * RTOSi);
     static void log(const char* format, ...);
-
+    struct debugEvent {
+        char message[BUFFER_SIZE];
+        uint64_t timestamp;
+        const char *taskName;
+    };
 private:
     void run();
     static void logger_task(void * params);
@@ -37,11 +42,7 @@ private:
     char buffer[BUFFER_SIZE];
     int offset;
     static uint32_t mLost_Log_event;
-    struct debugEvent {
-        char message[BUFFER_SIZE];
-        uint64_t timestamp;
-        const char *taskName;
-    }mDebugEvent;
+    debugEvent mDebugEvent;
 
 };
 #endif //FREERTOS_GREENHOUSE_LOGGER_H

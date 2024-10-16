@@ -3,7 +3,7 @@
 #include "Display.h"
 #include "Storage.h"
 
-QueueHandle_t SwitchHandler::mIRQ_eventQueue = xQueueCreate(10, sizeof(button_irq_event_data));;
+QueueHandle_t SwitchHandler::mIRQ_eventQueue = nullptr;
 uint32_t SwitchHandler::mLostEvents = 0;
 
 void SwitchHandler::irq_handler(uint gpio, uint32_t event_mask) {
@@ -21,13 +21,14 @@ void SwitchHandler::irq_handler(uint gpio, uint32_t event_mask) {
     portYIELD_FROM_ISR(xHigherPriorityWoken);
 }
 
-SwitchHandler::SwitchHandler(const RTOS_infrastructure * RTOSi) :
+SwitchHandler::SwitchHandler(const RTOS_infrastructure *RTOSi) :
         sw2(SW_2, irq_handler),
         sw1(SW_1, irq_handler),
         sw0(SW_0, irq_handler),
         swRotPress(SW_ROT, irq_handler),
         swRotor(ROT_A, ROT_B, irq_handler),
         iRTOS(RTOSi) {
+    mIRQ_eventQueue = iRTOS->qSwitchIRQ;
     if (xTaskCreate(task_switch_handler,
                     "SW_HANDLER",
                     512,

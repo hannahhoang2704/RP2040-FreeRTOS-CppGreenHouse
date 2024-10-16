@@ -48,7 +48,9 @@ struct RTOS_infrastructure {
     QueueHandle_t qNetworkStrings[3] {[NEW_API] = nullptr,
                                       [NEW_SSID] = nullptr,
                                       [NEW_PW] = nullptr};
+    QueueHandle_t qSyslog{nullptr};
     QueueHandle_t qStorageQueue{nullptr};
+    QueueHandle_t qSwitchIRQ{nullptr};
 
     SemaphoreHandle_t sUpdateGreenhouse{nullptr};
     SemaphoreHandle_t sUpdateDisplay{nullptr};

@@ -35,6 +35,11 @@ public:
 
     static uint32_t mLostEvents;
 
+    button_irq_event_data mEventData{
+            .gpio = SW_2,
+            .eventMask = GPIO_IRQ_LEVEL_HIGH,
+            .timeStamp = 0
+    };
 private:
     void switch_handler();
     static void task_switch_handler(void *params);
@@ -54,11 +59,7 @@ private:
 
     TaskHandle_t mTaskHandle{nullptr};
     static QueueHandle_t mIRQ_eventQueue;
-    button_irq_event_data mEventData{
-            .gpio = SW_2,
-            .eventMask = GPIO_IRQ_LEVEL_HIGH,
-            .timeStamp = 0
-    };
+
 
     SW::Button sw2;
     SW::Button sw1;

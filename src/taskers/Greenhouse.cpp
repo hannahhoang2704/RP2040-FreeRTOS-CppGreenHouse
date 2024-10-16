@@ -9,7 +9,7 @@ using namespace std;
 void null_timer(TimerHandle_t xTimer) {};
 
 Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client, const shared_ptr<PicoI2C> &pressure_sensor_I2C,
-                       const RTOS_infrastructure * RTOSi) :
+                       const RTOS_infrastructure *RTOSi) :
         sCO2(modbus_client),
         sHumidity(modbus_client),
         sTemperature(modbus_client),
@@ -86,10 +86,10 @@ void Greenhouse::update_sensors() {
     xQueueOverwrite(iRTOS->qPressure, &mPressure);
     xQueueOverwrite(iRTOS->qHumidity, &mHumidity);
     xQueueOverwrite(iRTOS->qTemperature, &mTemperature);
-    if (abs(prevCO2 - mCO2Measurement)                 > UPDATE_THRESHOLD ||
+    if (abs(prevCO2 - mCO2Measurement) > UPDATE_THRESHOLD ||
         static_cast<float>(abs(prevPressure - mPressure)) > UPDATE_THRESHOLD ||
-        abs(prevHumidity - mHumidity)                  > UPDATE_THRESHOLD ||
-        abs(prevTemperature - mTemperature)            > UPDATE_THRESHOLD) {
+        abs(prevHumidity - mHumidity) > UPDATE_THRESHOLD ||
+        abs(prevTemperature - mTemperature) > UPDATE_THRESHOLD) {
         xSemaphoreGive(iRTOS->sUpdateDisplay);
     }
 }
