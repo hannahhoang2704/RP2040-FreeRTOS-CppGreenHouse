@@ -1,6 +1,5 @@
 #include "SwitchHandler.h"
 #include "Logger.h"
-#include "Display.h"
 #include "Storage.h"
 
 QueueHandle_t SwitchHandler::mIRQ_eventQueue = nullptr;

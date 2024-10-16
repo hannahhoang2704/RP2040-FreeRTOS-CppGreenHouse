@@ -2,22 +2,15 @@
 #define RP2040_FREERTOS_IRQ_GREENHOUSE_H
 
 
-enum greenhouse_notifications {
-    bPASSIVE = 0x01
-};
-
 #include <memory>
 #include <utility>
-#include <iostream>
 
 #include "uart/PicoOsUart.h"
-#include "LED.h"
 #include "modbus/ModbusRegister.h"
 #include "i2c/PicoI2C.h"
 #include "Sensor.h"
 #include "Actuator.h"
 #include "RTOS_infrastructure.h"
-#include "timers.h"
 
 class Greenhouse {
 public:

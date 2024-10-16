@@ -1,7 +1,6 @@
 //
 // Created by Hanh Hoang on 24.9.2024.
 //
-#include <mutex>
 #include "Logger.h"
 
 QueueHandle_t Logger::mSyslog_queue = nullptr;

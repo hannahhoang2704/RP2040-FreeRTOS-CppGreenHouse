@@ -6,11 +6,6 @@
 #include <map>
 #include <vector>
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "queue.h"
-#include "semphr.h"
-
 #include "Switch.h"
 #include "RTOS_infrastructure.h"
 

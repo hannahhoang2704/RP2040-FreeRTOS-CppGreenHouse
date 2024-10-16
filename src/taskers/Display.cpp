@@ -1,4 +1,3 @@
-#include <iomanip>
 #include "Logger.h"
 #include "Display.h"
 

@@ -1,8 +1,5 @@
 #include "Greenhouse.h"
 #include "Logger.h"
-#include "Display.h"
-#include <sstream>
-#include <iomanip>
 
 using namespace std;
 

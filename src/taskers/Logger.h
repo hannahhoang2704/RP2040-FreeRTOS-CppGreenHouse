@@ -11,10 +11,6 @@
 #include <hardware/timer.h>
 #include <cstdarg>
 
-#include "FreeRTOS.h"
-#include "queue.h"
-#include "task.h"
-
 #include "uart/PicoOsUart.h"
 #include "Fmutex.h"
 #include "RTOS_infrastructure.h"

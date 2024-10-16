@@ -3,6 +3,8 @@
 
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "semphr.h"
+#include "timers.h"
 
 const int16_t CO2_MAX{1500};
 const int16_t CO2_MIN{0};

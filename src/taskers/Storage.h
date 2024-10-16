@@ -9,8 +9,6 @@
 #include <memory>
 #include <string>
 #include "i2c/PicoI2C.h"
-#include "FreeRTOS.h"
-#include "queue.h"
 #include "EEPROM.h"
 #include "RTOS_infrastructure.h"
 
