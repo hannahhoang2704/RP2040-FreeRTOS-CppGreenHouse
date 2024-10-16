@@ -8,16 +8,12 @@ Display::Display(const shared_ptr<PicoI2C> &i2c_sp,
                  const RTOS_infrastructure *RTOSi) :
         mSSD1306(i2c_sp),
         iRTOS(RTOSi) {
-    if (xTaskCreate(task_display,
+    xTaskCreate(task_display,
                     "DISPLAY",
                     512,
                     (void *) this,
                     tskIDLE_PRIORITY + 2,
-                    &mTaskHandle) == pdPASS) {
-        Logger::log("Created DISPLAY task.\n");
-    } else {
-        Logger::log("Failed to create DISPLAY task.\n");
-    }
+                    &mTaskHandle);
 }
 
 void Display::task_display(void *params) {

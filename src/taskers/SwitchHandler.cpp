@@ -29,16 +29,12 @@ SwitchHandler::SwitchHandler(const RTOS_infrastructure *RTOSi) :
         swRotor(ROT_A, ROT_B, irq_handler),
         iRTOS(RTOSi) {
     mIRQ_eventQueue = iRTOS->qSwitchIRQ;
-    if (xTaskCreate(task_switch_handler,
+    xTaskCreate(task_switch_handler,
                     "SW_HANDLER",
                     512,
                     (void *) this,
                     tskIDLE_PRIORITY + 2,
-                    &mTaskHandle) == pdPASS) {
-        Logger::log("Created SW_HANDLER task\n");
-    } else {
-        Logger::log("Failed to create SW_HANDLER task\n");
-    }
+                    &mTaskHandle);
 }
 
 void SwitchHandler::task_switch_handler(void *params) {

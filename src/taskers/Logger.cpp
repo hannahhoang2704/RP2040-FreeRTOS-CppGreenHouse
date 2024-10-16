@@ -10,16 +10,12 @@ Fmutex Logger::mLogAccess;
 
 Logger::Logger(std::shared_ptr<PicoOsUart> uart_sp, const RTOS_infrastructure * RTOSi) : mCLI_UART(std::move(uart_sp)) {
     mSyslog_queue = RTOSi->qSyslog;
-    if (xTaskCreate(Logger::logger_task,
+    xTaskCreate(Logger::logger_task,
                     "logger_task",
                     512,
                     (void *) this,
                     tskIDLE_PRIORITY + 1,
-                    &mTaskHandle) == pdPASS) {
-        Logger::log("Created LOGGER task.\n");
-    } else {
-        Logger::log("Failed to create LOGGER task.\n");
-    }
+                    &mTaskHandle);
 }
 
 void Logger::logger_task(void *params) {
@@ -64,6 +60,7 @@ void Logger::log(const char *format, ...) {
 }
 
 void Logger::run() {
+    Logger::log("Initiated\n");
     while (true) {
         while (xQueueReceive(mSyslog_queue, &mDebugEvent, mLost_Log_event > 0 ? 0 : portMAX_DELAY) == pdTRUE) {
             offset = snprintf(buffer, sizeof(buffer), "[%llu s] [%s] ", mDebugEvent.timestamp, mDebugEvent.taskName);

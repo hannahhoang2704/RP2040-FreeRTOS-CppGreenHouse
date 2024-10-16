@@ -50,7 +50,6 @@ const struct {
 using namespace std;
 
 int main() {
-    Logger::log("Boot!\n");
 
     /// interfaces
     auto CLI_UART = make_shared<PicoOsUart>(UART0_s.ctrl_nr, UART0_s.tx_pin, UART0_s.rx_pin, UART0_s.baud,UART0_s.stop_bits);
@@ -111,6 +110,5 @@ int main() {
     new Storage(EEPROM_I2C, &iRTOS);
     new SwitchHandler(&iRTOS);
 
-    Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();
 }

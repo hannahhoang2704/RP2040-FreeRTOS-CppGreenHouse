@@ -10,17 +10,11 @@ QueueHandle_t Storage::qStorage{nullptr};
 Storage::Storage(const std::shared_ptr<PicoI2C> &i2c_sp, const RTOS_infrastructure *RTOS_infrastructure) :
         mEEPROM(i2c_sp),
         iRTOS(RTOS_infrastructure) {
-    vQueueAddToRegistry(qStorage, "Storage");
     xTaskCreate(task_storage,
                 "Storage",
                 256, (void *) this,
                 tskIDLE_PRIORITY + 1,
                 &mTaskHandle);
-    if (mTaskHandle != nullptr) {
-        Logger::log("Created STORAGE task.\n");
-    } else {
-        Logger::log("Failed to create STORAGE task.\n");
-    }
     qStorage = iRTOS->qStorageQueue;
 }
 
@@ -36,6 +30,7 @@ void Storage::store(storage_data command) {
 }
 
 void Storage::storage() {
+    Logger::log("Initiated\n");
     mEEPROM.set_log_index_value();
     if (mEEPROM.get(EEPROM::CO2_TARGET_ADDR, mCO2Target)) {
         Logger::log("Stored CO2 target is %d\n", mCO2Target);

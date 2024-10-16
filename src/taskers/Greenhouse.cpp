@@ -17,41 +17,22 @@ Greenhouse::Greenhouse(const shared_ptr<ModbusClient> &modbus_client, const shar
         aFan(modbus_client),
         aCO2_Emitter(),
         iRTOS(RTOSi) {
-    if (xTaskCreate(task_automate_greenhouse,
+    xTaskCreate(task_automate_greenhouse,
                     "GREENHOUSE",
                     512,
                     (void *) this,
                     tskIDLE_PRIORITY + 3,
-                    &mTaskHandle) == pdPASS) {
-        Logger::log("Created GREENHOUSE task.\n");
-    } else {
-        Logger::log("Failed to create GREENHOUSE task.\n");
-    }
+                    &mTaskHandle);
     mUpdateTimerHandle = xTimerCreate("GREENHOUSE_UPDATE",
                                       pdMS_TO_TICKS(mTimerFreq),
                                       pdTRUE,
                                       iRTOS->sUpdateGreenhouse,
                                       Greenhouse::passive_update);
-    if (mUpdateTimerHandle != nullptr) {
-        Logger::log("Created GREENHOUSE_UPDATE timer\n");
-    } else {
-        Logger::log("Failed to create GREENHOUSE_UPDATE timer\n");
-    }
     mCO2WaitTimerHandle = xTimerCreate("CO2_WAIT",
                                        pdMS_TO_TICKS(CO2_DIFFUSION_MS),
                                        pdFALSE,
                                        nullptr,
                                        null_timer);
-    if (mUpdateTimerHandle != nullptr) {
-        Logger::log("Created GREENHOUSE_UPDATE timer\n");
-    } else {
-        Logger::log("Failed to create GREENHOUSE_UPDATE timer\n");
-    }
-    if (mCO2WaitTimerHandle != nullptr) {
-        Logger::log("Created CO2_WAIT timer\n");
-    } else {
-        Logger::log("Failed to create CO2_WAIT timer\n");
-    }
 }
 
 void Greenhouse::task_automate_greenhouse(void *params) {
@@ -64,7 +45,7 @@ void Greenhouse::passive_update(TimerHandle_t xTimer) {
 }
 
 void Greenhouse::automate_greenhouse() {
-    Logger::log("Initiated GREENHOUSE task\n");
+    Logger::log("Initiated\n");
     xTimerStart(mUpdateTimerHandle, portMAX_DELAY);
     while (true) {
         update_sensors();
@@ -160,7 +141,6 @@ void Greenhouse::pursue_CO2_target() {
             vTaskDelay(pdMS_TO_TICKS(emissionPeriod_ms));
             aCO2_Emitter.put_state(false);
             Logger::log("CO2 emission closed\n");
-            xTimerChangePeriod(mCO2WaitTimerHandle, pdMS_TO_TICKS(CO2_DIFFUSION_MS), portMAX_DELAY);
             xTimerStart(mCO2WaitTimerHandle, portMAX_DELAY);
         } else {
             if (mFan) {
