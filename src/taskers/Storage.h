@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include "i2c/PicoI2C.h"
+#include "FreeRTOS.h"
 #include "queue.h"
 #include "EEPROM.h"
 #include "RTOS_infrastructure.h"
@@ -32,5 +33,6 @@ private:
     char mAPI[MAX_CREDENTIAL_STRING_LEN + 1];
     char mPW[MAX_CREDENTIAL_STRING_LEN + 1];
     char mSSID[MAX_CREDENTIAL_STRING_LEN + 1];
+    static Fmutex mStoreAccess;
 };
 #endif //FREERTOS_GREENHOUSE_STORAGE_H

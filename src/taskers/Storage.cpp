@@ -6,6 +6,7 @@
 
 uint Storage::mLostStores{0};
 QueueHandle_t Storage::qStorage{nullptr};
+Fmutex Storage::mStoreAccess;
 
 Storage::Storage(const std::shared_ptr<PicoI2C> &i2c_sp, const RTOS_infrastructure *RTOS_infrastructure) :
         mEEPROM(i2c_sp),
@@ -24,8 +25,10 @@ void Storage::task_storage(void *params) {
 }
 
 void Storage::store(storage_data command) {
-    if (xQueueSendToBack(qStorage, &command, pdMS_TO_TICKS(1000)) != pdPASS) {
+    std::lock_guard<Fmutex> exclusive(mStoreAccess);
+    if (xQueueSendToBack(qStorage, &command, pdMS_TO_TICKS(1000)) == errQUEUE_FULL) {
         ++mLostStores;
+        Logger::log("ERROR: Storage queue full\n");
     }
 }
 
