@@ -129,7 +129,6 @@ void Greenhouse::pursue_CO2_target() {
                 if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
                     Logger::log("Failed to give UpdateDisplay semaphore\n");
                 }
-                mCO2PrevDelta = mCO2Delta;
                 Logger::log("CO2 target margin reached: T:%hd M:%.1f\n", mCO2Target, mCO2Measurement);
             } else if (mFan != aFan.MAX_POWER / 4) {
                 mFan = aFan.MAX_POWER / 4;
@@ -140,6 +139,7 @@ void Greenhouse::pursue_CO2_target() {
                 }
                 Logger::log("Fan set to: %hd\n", mFan);
             }
+            mCO2PrevDelta = mCO2Delta;
         } else if (mCO2Delta < 0) {
             if (mFan) {
                 mFan = aFan.OFF;

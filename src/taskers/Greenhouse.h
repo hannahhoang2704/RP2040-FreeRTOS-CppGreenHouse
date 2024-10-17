@@ -33,7 +33,7 @@ private:
     TimerHandle_t mCO2WaitTimerHandle;
 
     const uint DEFAULT_TIMER_FREQ_MS{1000};
-    const uint CO2_DIFFUSION_MS{15000};
+    const uint CO2_DIFFUSION_MS{30000};
     uint mTimerFreq{DEFAULT_TIMER_FREQ_MS};
 
     Sensor::CO2 sCO2;
