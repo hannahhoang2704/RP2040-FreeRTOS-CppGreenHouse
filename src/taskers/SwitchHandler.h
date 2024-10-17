@@ -6,17 +6,12 @@
 #include <map>
 #include <vector>
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "queue.h"
-#include "semphr.h"
-
 #include "Switch.h"
 #include "RTOS_infrastructure.h"
 
 class SwitchHandler {
 public:
-    SwitchHandler(RTOS_infrastructure RTOSi);
+    SwitchHandler(const RTOS_infrastructure * RTOSi);
 
     static void irq_handler(uint gpio, uint32_t event_mask);
 
@@ -35,6 +30,11 @@ public:
 
     static uint32_t mLostEvents;
 
+    button_irq_event_data mEventData{
+            .gpio = SW_2,
+            .eventMask = GPIO_IRQ_LEVEL_HIGH,
+            .timeStamp = 0
+    };
 private:
     void switch_handler();
     static void task_switch_handler(void *params);
@@ -45,6 +45,7 @@ private:
     void state_toggle();
     void insert();
     void next_phase();
+    void omit_CO2_target();
     void backspace();
 
     bool inc_pending_char();
@@ -54,11 +55,7 @@ private:
 
     TaskHandle_t mTaskHandle{nullptr};
     static QueueHandle_t mIRQ_eventQueue;
-    button_irq_event_data mEventData{
-            .gpio = SW_2,
-            .eventMask = GPIO_IRQ_LEVEL_HIGH,
-            .timeStamp = 0
-    };
+
 
     SW::Button sw2;
     SW::Button sw1;
@@ -83,10 +80,8 @@ private:
 
     static const uint64_t BUTTON_DEBOUNCE{400000};
     std::map<uint, uint64_t> mPrevEventTimeMap;
-    uint64_t mPrevBackspace{0};
+    uint64_t mPrevSW_ROT{0};
     swEvent mPrevRotation{UNKNOWN};
-    uint64_t mPrevDisplayNotificationTime{0};
-    uint32_t mDisplayNote;
 
     /// state data
     const int16_t CO2_INCREMENT{1};
@@ -100,7 +95,7 @@ private:
     std::vector<std::string> mNetworkStrings{"", "", ""};
 
     /// RTOS infrastructure
-    RTOS_infrastructure iRTOS;
+    const RTOS_infrastructure * iRTOS;
 };
 
 

@@ -3,14 +3,13 @@
 
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "semphr.h"
+#include "timers.h"
 
-// RTOS task notifications require breathing room
-// OLED gets crazy if events are sent too frequently -- i.e. with Rotor
-static const uint64_t TASK_NOTIFICATION_RATE_LIMIT_US{35000};
 const int16_t CO2_MAX{1500};
 const int16_t CO2_MIN{0};
 const char INIT_CHAR{'.'};
-const char MAX_STRING_LEN{64};
+const uint MAX_CREDENTIAL_STRING_LEN{61};
 
 enum program_state {
     STATUS,
@@ -51,7 +50,9 @@ struct RTOS_infrastructure {
     QueueHandle_t qNetworkStrings[3] {[NEW_API] = nullptr,
                                       [NEW_SSID] = nullptr,
                                       [NEW_PW] = nullptr};
+    QueueHandle_t qSyslog{nullptr};
     QueueHandle_t qStorageQueue{nullptr};
+    QueueHandle_t qSwitchIRQ{nullptr};
 
     SemaphoreHandle_t sUpdateGreenhouse{nullptr};
     SemaphoreHandle_t sUpdateDisplay{nullptr};

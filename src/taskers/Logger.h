@@ -11,35 +11,34 @@
 #include <hardware/timer.h>
 #include <cstdarg>
 
-#include "FreeRTOS.h"
-#include "queue.h"
-#include "task.h"
-
-
 #include "uart/PicoOsUart.h"
-#define BUFFER_SIZE 128
+#include "Fmutex.h"
+#include "RTOS_infrastructure.h"
+
+#define BUFFER_SIZE 256
 
 class Logger{
 public:
-    Logger(std::shared_ptr<PicoOsUart> uart_sp);
+    Logger(std::shared_ptr<PicoOsUart> uart_sp, const RTOS_infrastructure * RTOSi);
     static void log(const char* format, ...);
-    static void log(const std::string &string);
-
-private:
-    void run();
-    static void logger_task(void * params);
-    static const char *get_task_name();
-    TaskHandle_t mTaskHandle;
-    std::shared_ptr<PicoOsUart> mCLI_UART;
-    static QueueHandle_t mSyslog_queue;
-    char buffer[256];
-    int offset;
-    static uint32_t mLost_Log_event;
     struct debugEvent {
         char message[BUFFER_SIZE];
         uint64_t timestamp;
         const char *taskName;
-    }mDebugEvent;
+    };
+private:
+    void run();
+    static void logger_task(void * params);
+    static const char *get_task_name();
+
+    TaskHandle_t mTaskHandle;
+    std::shared_ptr<PicoOsUart> mCLI_UART;
+    static QueueHandle_t mSyslog_queue;
+    static Fmutex mLogAccess;
+    char buffer[BUFFER_SIZE];
+    int offset;
+    static uint32_t mLost_Log_event;
+    debugEvent mDebugEvent;
 
 };
 #endif //FREERTOS_GREENHOUSE_LOGGER_H

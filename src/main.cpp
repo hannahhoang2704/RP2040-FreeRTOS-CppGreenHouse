@@ -50,7 +50,6 @@ const struct {
 using namespace std;
 
 int main() {
-    Logger::log("Boot!\n");
 
     /// interfaces
     auto CLI_UART = make_shared<PicoOsUart>(UART0_s.ctrl_nr, UART0_s.tx_pin, UART0_s.rx_pin, UART0_s.baud,UART0_s.stop_bits);
@@ -60,8 +59,7 @@ int main() {
     auto EEPROM_I2C = make_shared<PicoI2C>(I2C0_s.ctrl_nr, I2C0_s.baud);
 
     /// RTOS infrastructure
-    // for passing mutual RTOS infrastructure to requiring taskers
-    const RTOS_infrastructure iRTOS{
+    const RTOS_infrastructure iRTOS {
             .qState             = xQueueCreate(1, sizeof(uint8_t)),
             .qNetworkPhase      = xQueueCreate(1, sizeof(uint8_t)),
             .qCO2TargetPending  = xQueueCreate(1, sizeof(int16_t)),
@@ -74,14 +72,16 @@ int main() {
             .qCharPending       = xQueueCreate(1, sizeof(char)),
             .qConnectionState   = xQueueCreate(1, sizeof(uint8_t)),
             .qNetworkStrings = {
-                    [NEW_API]   = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
-                    [NEW_SSID]  = xQueueCreate(1, sizeof(char[MAX_STRING_LEN])),
-                    [NEW_PW]    = xQueueCreate(1, sizeof(char[MAX_STRING_LEN]))
+                    [NEW_API]   = xQueueCreate(1, sizeof(char[MAX_CREDENTIAL_STRING_LEN + 1])),
+                    [NEW_SSID]  = xQueueCreate(1, sizeof(char[MAX_CREDENTIAL_STRING_LEN + 1])),
+                    [NEW_PW]    = xQueueCreate(1, sizeof(char[MAX_CREDENTIAL_STRING_LEN + 1]))
             },
-            .qStorageQueue = xQueueCreate(5, sizeof(storage_data)),
+            .qSyslog            = xQueueCreate(10, sizeof(Logger::debugEvent)),
+            .qStorageQueue      = xQueueCreate(5,  sizeof(storage_data)),
+            .qSwitchIRQ         = xQueueCreate(10, sizeof(SwitchHandler::button_irq_event_data)),
 
-            .sUpdateGreenhouse = xSemaphoreCreateBinary(),
-            .sUpdateDisplay = xSemaphoreCreateBinary()
+            .sUpdateGreenhouse  = xSemaphoreCreateBinary(),
+            .sUpdateDisplay     = xSemaphoreCreateBinary()
     };
 
     // register all the queues
@@ -89,7 +89,7 @@ int main() {
     vQueueAddToRegistry(iRTOS.qNetworkPhase, "NetworkCredentials");
     vQueueAddToRegistry(iRTOS.qCO2TargetPending, "CO2TargetPending");
     vQueueAddToRegistry(iRTOS.qCO2TargetCurrent, "CO2TargetCurrent");
-    vQueueAddToRegistry(iRTOS.qCO2Measurement, "qCO2Measurement");
+    vQueueAddToRegistry(iRTOS.qCO2Measurement, "CO2Measurement");
     vQueueAddToRegistry(iRTOS.qPressure, "Pressure");
     vQueueAddToRegistry(iRTOS.qFan, "Fan");
     vQueueAddToRegistry(iRTOS.qHumidity, "Humidity");
@@ -99,15 +99,16 @@ int main() {
     vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_API], "NewAPI");
     vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_SSID], "NewSSID");
     vQueueAddToRegistry(iRTOS.qNetworkStrings[NEW_PW], "NewPW");
+    vQueueAddToRegistry(iRTOS.qSyslog, "SystemLog");
     vQueueAddToRegistry(iRTOS.qStorageQueue, "StorageQueue");
+    vQueueAddToRegistry(iRTOS.qSwitchIRQ, "SW_IRQ");
 
     /// taskers
-    new Display(OLED_SDP600_I2C, iRTOS);
-    new Greenhouse(rtu_client, OLED_SDP600_I2C, iRTOS);
-    new Logger(CLI_UART);
-    new Storage(EEPROM_I2C, iRTOS);
-    new SwitchHandler(iRTOS);
+    new Display(OLED_SDP600_I2C, &iRTOS);
+    new Greenhouse(rtu_client, OLED_SDP600_I2C, &iRTOS);
+    new Logger(CLI_UART, &iRTOS);
+    new Storage(EEPROM_I2C, &iRTOS);
+    new SwitchHandler(&iRTOS);
 
-    Logger::log("Initializing scheduler...\n");
     vTaskStartScheduler();
 }

@@ -1,23 +1,18 @@
-#include <iomanip>
 #include "Logger.h"
 #include "Display.h"
 
 using namespace std;
 
 Display::Display(const shared_ptr<PicoI2C> &i2c_sp,
-                 RTOS_infrastructure RTOSi) :
+                 const RTOS_infrastructure *RTOSi) :
         mSSD1306(i2c_sp),
         iRTOS(RTOSi) {
-    if (xTaskCreate(task_display,
+    xTaskCreate(task_display,
                     "DISPLAY",
                     512,
                     (void *) this,
                     tskIDLE_PRIORITY + 2,
-                    &mTaskHandle) == pdPASS) {
-        Logger::log("Created DISPLAY task.\n");
-    } else {
-        Logger::log("Failed to create DISPLAY task.\n");
-    }
+                    &mTaskHandle);
 }
 
 void Display::task_display(void *params) {
@@ -31,7 +26,7 @@ void Display::display() {
     print_init();
     mSSD1306.show();
     while (true) {
-        xSemaphoreTake(iRTOS.sUpdateDisplay, portMAX_DELAY);
+        xSemaphoreTake(iRTOS->sUpdateDisplay, portMAX_DELAY);
         mSSD1306.fill(0);
         update();
         mSSD1306.show();
@@ -44,19 +39,9 @@ void Display::print_init() {
 }
 
 void Display::update() {
-    uint8_t prevState = mState;
-    if (xQueuePeek(iRTOS.qState, &mState, 0) == pdFALSE) {
+    if (xQueuePeek(iRTOS->qState, &mState, 0) == pdFALSE) {
         Logger::log("WARNING: qState empty\n");
     }
-    if (prevState != mState) {
-        if (mState == STATUS) {
-            mCO2TargetPending = mCO2TargetCurrent;
-        } else {
-            for (std::string &str: mNetworkStrings) str.clear();
-            mNetworkPhase = NEW_API;
-        }
-    }
-
     if (mState == STATUS) {
         print_status_base();
         print_CO2_target();
@@ -86,8 +71,8 @@ void Display::print_status_base() {
 
 void Display::print_CO2_target() {
     ssValue.str("");
-    bool pendingQempty = xQueuePeek(iRTOS.qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE;
-    bool currentQempty = xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent, 0) == pdFALSE;
+    bool pendingQempty = xQueuePeek(iRTOS->qCO2TargetPending, &mCO2TargetPending, 0) == pdFALSE;
+    bool currentQempty = xQueuePeek(iRTOS->qCO2TargetCurrent, &mCO2TargetCurrent, 0) == pdFALSE;
     if (pendingQempty) {
         Logger::log("WARNING: qCO2TargetPending empty\n");
         if (currentQempty) {
@@ -118,7 +103,7 @@ void Display::print_CO2_target() {
 
 void Display::print_CO2_measurement() {
     ssValue.str("");
-    if (xQueuePeek(iRTOS.qCO2Measurement, &mCO2Measurement, 0) == pdFALSE) {
+    if (xQueuePeek(iRTOS->qCO2Measurement, &mCO2Measurement, 0) == pdFALSE) {
         Logger::log("WARNING: qCO2Measurement empty\n");
         ssValue << setw(STATUS_VALUE_W) << "N/A";
     } else {
@@ -130,7 +115,7 @@ void Display::print_CO2_measurement() {
 
 void Display::print_pressure() {
     ssValue.str("");
-    if (xQueuePeek(iRTOS.qPressure, &mPressure, 0) == pdFALSE) {
+    if (xQueuePeek(iRTOS->qPressure, &mPressure, 0) == pdFALSE) {
         Logger::log("WARNING: qPressure empty\n");
         ssValue << setw(STATUS_VALUE_W) << "N/A";
     } else {
@@ -142,7 +127,7 @@ void Display::print_pressure() {
 
 void Display::print_fan() {
     ssValue.str("");
-    if (xQueuePeek(iRTOS.qFan, &mFan, 0) == pdFALSE) {
+    if (xQueuePeek(iRTOS->qFan, &mFan, 0) == pdFALSE) {
         Logger::log("WARNING: qFan empty\n");
         ssValue << setw(STATUS_VALUE_W) << "N/A";
     } else {
@@ -154,7 +139,7 @@ void Display::print_fan() {
 
 void Display::print_hum() {
     ssValue.str("");
-    if (xQueuePeek(iRTOS.qHumidity, &mHumidity, 0) == pdFALSE) {
+    if (xQueuePeek(iRTOS->qHumidity, &mHumidity, 0) == pdFALSE) {
         Logger::log("WARNING: qHumidity empty\n");
         ssValue << setw(STATUS_VALUE_W) << "N/A";
     } else {
@@ -166,7 +151,7 @@ void Display::print_hum() {
 
 void Display::print_temp() {
     ssValue.str("");
-    if (xQueuePeek(iRTOS.qTemperature, &mTemperature, 0) == pdFALSE) {
+    if (xQueuePeek(iRTOS->qTemperature, &mTemperature, 0) == pdFALSE) {
         Logger::log("WARNING: qTemperature empty\n");
         ssValue << setw(STATUS_VALUE_W) << "N/A";
     } else {
@@ -180,7 +165,7 @@ void Display::print_temp() {
 
 void Display::print_network_base() {
     uint8_t prevPhase = mNetworkPhase;
-    if (xQueuePeek(iRTOS.qNetworkPhase, &mNetworkPhase, 0) == pdFALSE) {
+    if (xQueuePeek(iRTOS->qNetworkPhase, &mNetworkPhase, 0) == pdFALSE) {
         Logger::log("ERROR: qNetworkPhase empty\n");
     } else {
         if (prevPhase == NEW_PW && mNetworkPhase == NEW_API) {
@@ -207,8 +192,8 @@ void Display::print_network_base() {
 
 void Display::print_network_input() {
     for (uint8_t str_i = 0; str_i < 3; ++str_i) {
-        char buf[MAX_STRING_LEN];
-        if (xQueuePeek(iRTOS.qNetworkStrings[str_i], buf, 0) == pdFALSE) {
+        char buf[MAX_CREDENTIAL_STRING_LEN + 1];
+        if (xQueuePeek(iRTOS->qNetworkStrings[str_i], buf, 0) == pdFALSE) {
             Logger::log("WARNING: qNetworkStrings[%s] empty\n",
                         (str_i == NEW_API ? "NEW_API" : str_i == NEW_SSID ? "NEW_SSID" : "NEW_PW"));
         }
@@ -244,7 +229,7 @@ void Display::print_network_input() {
 }
 
 void Display::print_network_pending_char() {
-    if (xQueuePeek(iRTOS.qCharPending, &mCharPending, 0) == pdFALSE) {
+    if (xQueuePeek(iRTOS->qCharPending, &mCharPending, 0) == pdFALSE) {
         Logger::log("WARNING: qCharPending empty\n");
     }
 
@@ -271,7 +256,7 @@ void Display::print_network_pending_char() {
 }
 
 void Display::print_connection() {
-    if (xQueuePeek(iRTOS.qConnectionState, &mConnectionState, 0) == pdFALSE) {
+    if (xQueuePeek(iRTOS->qConnectionState, &mConnectionState, 0) == pdFALSE) {
         Logger::log("qConnectionState empty\n");
     }
     ssValue.str("");

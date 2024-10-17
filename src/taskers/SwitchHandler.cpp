@@ -1,9 +1,8 @@
 #include "SwitchHandler.h"
 #include "Logger.h"
-#include "Display.h"
 #include "Storage.h"
 
-QueueHandle_t SwitchHandler::mIRQ_eventQueue = xQueueCreate(10, sizeof(button_irq_event_data));;
+QueueHandle_t SwitchHandler::mIRQ_eventQueue = nullptr;
 uint32_t SwitchHandler::mLostEvents = 0;
 
 void SwitchHandler::irq_handler(uint gpio, uint32_t event_mask) {
@@ -21,23 +20,20 @@ void SwitchHandler::irq_handler(uint gpio, uint32_t event_mask) {
     portYIELD_FROM_ISR(xHigherPriorityWoken);
 }
 
-SwitchHandler::SwitchHandler(RTOS_infrastructure RTOSi) :
+SwitchHandler::SwitchHandler(const RTOS_infrastructure *RTOSi) :
         sw2(SW_2, irq_handler),
         sw1(SW_1, irq_handler),
         sw0(SW_0, irq_handler),
         swRotPress(SW_ROT, irq_handler),
         swRotor(ROT_A, ROT_B, irq_handler),
         iRTOS(RTOSi) {
-    if (xTaskCreate(task_switch_handler,
-                    "SW_HANDLER",
-                    512,
-                    (void *) this,
-                    tskIDLE_PRIORITY + 2,
-                    &mTaskHandle) == pdPASS) {
-        Logger::log("Created SW_HANDLER task\n");
-    } else {
-        Logger::log("Failed to create SW_HANDLER task\n");
-    }
+    mIRQ_eventQueue = iRTOS->qSwitchIRQ;
+    xTaskCreate(task_switch_handler,
+                "SW_HANDLER",
+                512,
+                (void *) this,
+                tskIDLE_PRIORITY + 2,
+                &mTaskHandle);
 }
 
 void SwitchHandler::task_switch_handler(void *params) {
@@ -47,8 +43,8 @@ void SwitchHandler::task_switch_handler(void *params) {
 
 void SwitchHandler::switch_handler() {
     Logger::log("Initiated\n");
-    xQueueOverwrite(iRTOS.qState, &mState);
-    if (xQueuePeek(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent, pdMS_TO_TICKS(1000)) == pdFALSE) {
+    xQueueOverwrite(iRTOS->qState, &mState);
+    if (xQueuePeek(iRTOS->qCO2TargetCurrent, &mCO2TargetCurrent, pdMS_TO_TICKS(1000)) == pdFALSE) {
         Logger::log("WARNING: qCO2TargetCurrent empty\n", mCO2TargetCurrent);
     } else {
         mCO2TargetPending = mCO2TargetCurrent;
@@ -60,7 +56,6 @@ void SwitchHandler::switch_handler() {
         while (xQueueReceive(mIRQ_eventQueue,
                              static_cast<void *>(&mEventData),
                              mLostEvents > 0 ? 0 : portMAX_DELAY) == pdTRUE) {
-            mDisplayNote = 0;
             if (mEventData.gpio == swRotor.mPinA || mEventData.gpio == swRotor.mPinB) {
                 rot_event();
             } else {
@@ -75,7 +70,7 @@ void SwitchHandler::switch_handler() {
 }
 
 void SwitchHandler::rot_event() {
-    if (mEventData.timeStamp - mPrevBackspace > BUTTON_DEBOUNCE) {
+    if (mEventData.timeStamp - mPrevSW_ROT > BUTTON_DEBOUNCE) {
         // deduce rotation direction
         mEvent = UNKNOWN;
         if (mEventData.eventMask == GPIO_IRQ_EDGE_FALL) {
@@ -88,18 +83,24 @@ void SwitchHandler::rot_event() {
             if (mState == STATUS) {
                 if (mEvent == ROT_CLOCKWISE && mCO2TargetPending < CO2_MAX) {
                     mCO2TargetPending += CO2_INCREMENT;
-                    xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
-                    xSemaphoreGive(iRTOS.sUpdateDisplay);
+                    xQueueOverwrite(iRTOS->qCO2TargetPending, &mCO2TargetPending);
+                    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                        Logger::log("Failed to give sUpdateDisplay\n");
+                    }
                 } else if (mEvent == ROT_COUNTER_CLOCKWISE && mCO2TargetPending > CO2_MIN) {
                     mCO2TargetPending -= CO2_INCREMENT;
-                    xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
-                    xSemaphoreGive(iRTOS.sUpdateDisplay);
+                    xQueueOverwrite(iRTOS->qCO2TargetPending, &mCO2TargetPending);
+                    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                        Logger::log("Failed to give sUpdateDisplay\n");
+                    }
                 }
             } else {
                 if ((mEvent == ROT_CLOCKWISE && inc_pending_char()) ||
                     (mEvent == ROT_COUNTER_CLOCKWISE && dec_pending_char())) {
-                    xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
-                    xSemaphoreGive(iRTOS.sUpdateDisplay);
+                    xQueueOverwrite(iRTOS->qCharPending, &mCharPending);
+                    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                        Logger::log("Failed to give sUpdateDisplay\n");
+                    }
                 }
             }
         }
@@ -121,10 +122,15 @@ void SwitchHandler::button_event() {
                 insert();
                 break;
             case SW_0:
-                next_phase();
+                if (mState == STATUS) {
+                    omit_CO2_target();
+                } else if (mState == NETWORK) {
+                    next_phase();
+                }
                 break;
             case SW_ROT:
                 backspace();
+                mPrevSW_ROT = mEventData.timeStamp;
                 break;
             default:
                 Logger::log("ERROR: who dis gpio %u\n", mEventData.gpio);
@@ -133,123 +139,146 @@ void SwitchHandler::button_event() {
     }
 }
 
-/// change system state -- status or relog
-// changing system state resets pending string input
+/// toggle screen / system state between status and network
 void SwitchHandler::state_toggle() {
     mState = mState == STATUS ? NETWORK : STATUS;
     if (mState == STATUS) {
         mCharPending = INIT_CHAR;
         mNetworkPhase = NEW_API;
-        xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
-
+        xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
         Logger::log("[NETWORK => STATUS]\n");
     } else {
+        /// TODO: with ThingSpeaker: reconsider NetworkStrings' handling during and after reconnection
         for (std::string &str: mNetworkStrings) str.clear();
-        xQueueOverwrite(iRTOS.qNetworkStrings[NEW_API], mNetworkStrings[NEW_API].c_str());
-        xQueueOverwrite(iRTOS.qNetworkStrings[NEW_SSID], mNetworkStrings[NEW_SSID].c_str());
-        xQueueOverwrite(iRTOS.qNetworkStrings[NEW_PW], mNetworkStrings[NEW_PW].c_str());
+        xQueueOverwrite(iRTOS->qNetworkStrings[NEW_API], mNetworkStrings[NEW_API].c_str());
+        xQueueOverwrite(iRTOS->qNetworkStrings[NEW_SSID], mNetworkStrings[NEW_SSID].c_str());
+        xQueueOverwrite(iRTOS->qNetworkStrings[NEW_PW], mNetworkStrings[NEW_PW].c_str());
         Logger::log("[STATUS => NETWORK]\n");
     }
-    xQueueOverwrite(iRTOS.qState, &mState);
-    xSemaphoreGive(iRTOS.sUpdateDisplay);
+    xQueueOverwrite(iRTOS->qState, &mState);
+    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+        Logger::log("Failed to give sUpdateDisplay\n");
+    }
 }
 
-/// confirm rotated adjustment
+/// confirm pending rotation position
 // status = CO2 target
-// relog = character to string
+// network = append character to string
 void SwitchHandler::insert() {
     if (mState == STATUS) {
         if (mCO2TargetCurrent != mCO2TargetPending) {
             mCO2TargetCurrent = mCO2TargetPending;
-            xQueueOverwrite(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent);
-            xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
+            xQueueOverwrite(iRTOS->qCO2TargetCurrent, &mCO2TargetCurrent);
+            xQueueOverwrite(iRTOS->qCO2TargetPending, &mCO2TargetPending);
             Storage::store(CO2_target);
-            xSemaphoreGive(iRTOS.sUpdateDisplay);
-            xSemaphoreGive(iRTOS.sUpdateGreenhouse);
+            if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                Logger::log("Failed to give sUpdateDisplay\n");
+            }
+            if (xSemaphoreGive(iRTOS->sUpdateGreenhouse) == pdFALSE) {
+                Logger::log("Failed to give sUpdateGreenhouse\n");
+            }
             Logger::log("[STATUS] CO2 set: %hu\n", mCO2TargetCurrent);
         }
     } else {
-        mNetworkStrings[mNetworkPhase] += mCharPending;
-        Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
-                    mNetworkStrings[NEW_API].c_str(),
-                    mNetworkStrings[NEW_SSID].c_str(),
-                    mNetworkStrings[NEW_PW].c_str());
-        xQueueOverwrite(iRTOS.qNetworkStrings[mNetworkPhase], mNetworkStrings[mNetworkPhase].c_str());
-        mCharPending = INIT_CHAR;
-        xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
-        xSemaphoreGive(iRTOS.sUpdateDisplay);
+        if (mNetworkStrings[mNetworkPhase].length() < MAX_CREDENTIAL_STRING_LEN) {
+            mNetworkStrings[mNetworkPhase] += mCharPending;
+            Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
+                        mNetworkStrings[NEW_API].c_str(),
+                        mNetworkStrings[NEW_SSID].c_str(),
+                        mNetworkStrings[NEW_PW].c_str());
+            /// TODO: with ThingSpeaker: reconsider NetworkStrings' handling during and after reconnection
+            xQueueOverwrite(iRTOS->qNetworkStrings[mNetworkPhase], mNetworkStrings[mNetworkPhase].c_str());
+            mCharPending = INIT_CHAR;
+            xQueueOverwrite(iRTOS->qCharPending, &mCharPending);
+            if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                Logger::log("Failed to give sUpdateDisplay\n");
+            }
+        } else {
+            Logger::log("String length capped to 61: [%s]\n", mNetworkStrings[mNetworkPhase].c_str());
+        }
     }
 }
 
-/// confirm a series of confirmed rotated adjustments
-// applies only (?) in relog state when confirming string, moving then on to the next phase
+// confirm credential strings, moving then on to the next credential string
+// - if current phase is the last: prompt ThingSpeaker to send reconnect
 void SwitchHandler::next_phase() {
-    if (mState == STATUS) {
-        // Sets CO2 target to "N/A", thus halting any and all actuator behaviour.
-        // "Panic button": stop all actuators.
-        Logger::log("Omitting CO2Target\n");
-        xQueueReceive(iRTOS.qCO2TargetCurrent, &mCO2TargetCurrent, 0);
-        xSemaphoreGive(iRTOS.sUpdateDisplay);
-        xSemaphoreGive(iRTOS.sUpdateGreenhouse);
-    } else {
-        switch (mNetworkPhase) {
-            case NEW_API:
-                Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
-                            mNetworkStrings[NEW_API].c_str(),
-                            mNetworkStrings[NEW_SSID].c_str(),
-                            mNetworkStrings[NEW_PW].c_str());
-                Storage::store(API_str);
-                mNetworkPhase = NEW_SSID;
-                xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
-                break;
-            case NEW_SSID:
-                Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
-                            mNetworkStrings[NEW_API].c_str(),
-                            mNetworkStrings[NEW_SSID].c_str(),
-                            mNetworkStrings[NEW_PW].c_str());
-                Storage::store(SSID_str);
-                mNetworkPhase = NEW_PW;
-                xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
-                break;
-            case NEW_PW:
-                Logger::log("[NETWORK] Connect with: API[%s] UN[%s] PW[%s]\n",
-                            mNetworkStrings[NEW_API].c_str(),
-                            mNetworkStrings[NEW_SSID].c_str(),
-                            mNetworkStrings[NEW_PW].c_str());
+    switch (mNetworkPhase) {
+        case NEW_API:
+            Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
+                        mNetworkStrings[NEW_API].c_str(),
+                        mNetworkStrings[NEW_SSID].c_str(),
+                        mNetworkStrings[NEW_PW].c_str());
+            Storage::store(API_str);
+            mNetworkPhase = NEW_SSID;
+            xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
+            break;
+        case NEW_SSID:
+            Logger::log("[NETWORK] API[%s] UN[%s] PW[%s]\n",
+                        mNetworkStrings[NEW_API].c_str(),
+                        mNetworkStrings[NEW_SSID].c_str(),
+                        mNetworkStrings[NEW_PW].c_str());
+            Storage::store(SSID_str);
+            mNetworkPhase = NEW_PW;
+            xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
+            break;
+        case NEW_PW:
+            Logger::log("[NETWORK] Connect with: API[%s] UN[%s] PW[%s]\n",
+                        mNetworkStrings[NEW_API].c_str(),
+                        mNetworkStrings[NEW_SSID].c_str(),
+                        mNetworkStrings[NEW_PW].c_str());
 
-                // TODO: send strings to ThingSpeaker + order reconnection
+            Storage::store(PW_str);
 
-                Storage::store(PW_str);
+            // TODO: order ThingSpeaker to reconnect
+            // TODO: consider how are qNetworkStrings are handled during and after reconnection
 
-                //// consider when and where -- or if the strings should be emptied
-                for (std::string &str: mNetworkStrings) str.clear();
+            for (std::string &str: mNetworkStrings) str.clear();
 
-                mState = STATUS;
-                mNetworkPhase = NEW_API;
-                xQueueOverwrite(iRTOS.qState, &mState);
-                xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
-                break;
-        }
-        xSemaphoreGive(iRTOS.sUpdateDisplay);
+            mState = STATUS;
+            mNetworkPhase = NEW_API;
+            xQueueOverwrite(iRTOS->qState, &mState);
+            xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
+            break;
+    }
+    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+        Logger::log("Failed to give sUpdateDisplay\n");
+    }
+}
+
+// omit current CO2 target, halting CO2 target pursuit
+void SwitchHandler::omit_CO2_target() {
+    Logger::log("Omitting CO2Target\n");
+    if (xQueueReceive(iRTOS->qCO2TargetCurrent, &mCO2TargetCurrent, 0) == pdFALSE) {
+        Logger::log("qCO2TargetCurrent already empty");
+    }
+    if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+        Logger::log("Failed to give sUpdateDisplay\n");
+    }
+    if (xSemaphoreGive(iRTOS->sUpdateGreenhouse) == pdFALSE) {
+        Logger::log("Failed to give sUpdateGreenhouse\n");
     }
 }
 
 /// backspace
 // status = resets pending user input (CO2 target) to current CO2 target
-// relog = remove last character from string corresponding to the phase
+// network = remove last character from string corresponding to the phase
 //  - If pending string is empty, move back to previous phase. If current phase is the first phase, ignore.
 void SwitchHandler::backspace() {
     if (mState == STATUS) {
         mCO2TargetPending = mCO2TargetCurrent;
-        xQueueOverwrite(iRTOS.qCO2TargetPending, &mCO2TargetPending);
-        xSemaphoreGive(iRTOS.sUpdateDisplay);
+        xQueueOverwrite(iRTOS->qCO2TargetPending, &mCO2TargetPending);
+        if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+            Logger::log("Failed to give sUpdateDisplay\n");
+        }
         Logger::log("[STATUS] CO2 reset: %hu\n", mCO2TargetCurrent);
     } else {
         if (mNetworkStrings[mNetworkPhase].empty()) {
             if (mNetworkPhase != NEW_API) {
                 mNetworkPhase = mNetworkPhase == NEW_SSID ? NEW_API : NEW_SSID;
-                xQueueOverwrite(iRTOS.qNetworkPhase, &mNetworkPhase);
-                xSemaphoreGive(iRTOS.sUpdateDisplay);
+                xQueueOverwrite(iRTOS->qNetworkPhase, &mNetworkPhase);
+                if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                    Logger::log("Failed to give sUpdateDisplay\n");
+                }
             }
         } else {
             mNetworkStrings[mNetworkPhase].pop_back();
@@ -258,21 +287,22 @@ void SwitchHandler::backspace() {
                         mNetworkStrings[NEW_SSID].c_str(),
                         mNetworkStrings[NEW_PW].c_str());
 
-            xQueueOverwrite(iRTOS.qNetworkStrings[mNetworkPhase], mNetworkStrings[mNetworkPhase].c_str());
+            xQueueOverwrite(iRTOS->qNetworkStrings[mNetworkPhase], mNetworkStrings[mNetworkPhase].c_str());
             mCharPending = INIT_CHAR;
-            xQueueOverwrite(iRTOS.qCharPending, &mCharPending);
-            xSemaphoreGive(iRTOS.sUpdateDisplay);
+            xQueueOverwrite(iRTOS->qCharPending, &mCharPending);
+            if (xSemaphoreGive(iRTOS->sUpdateDisplay) == pdFALSE) {
+                Logger::log("Failed to give sUpdateDisplay\n");
+            }
         }
     }
-    mPrevBackspace = time_us_64();
 }
 
 /* Character Mapping:
  * '0' (zero) is the lowest reachable character, ignoring rotations below it.
  * '~' (tilde) is the highest reachable character, ignoring rotations above it.
  * Incrementing and decrementing alphabet characters runs through upper- and lowercase characters in pairs,
- * like so: AaBbCcDdEe... and so forth.
- * General order: ['0'..'9'], '.', [Aa..Zz], [rest of the fucking owl]
+ * like so: AaBbCcDdEe... Zz.
+ * General order: ['0' .. '9'], '.', [Aa .. Zz], [! .. ~]
  */
 
 /// increment pending character with a modified lexicography
