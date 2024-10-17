@@ -71,9 +71,7 @@ void EEPROM::put(uint16_t address, const char *str){
         string_length = STRLEN_EEPROM;
     }
     uint8_t data_str[string_length + CRC_CHAR];
-    for (int a = 0; a < strlen(str); ++a) {
-        data_str[a] = (uint8_t) str[a];
-    }
+    strncpy((char*)data_str, str, string_length - 1);
     data_str[strlen(str)] = '\0';
     uint16_t crc = crc16(data_str, string_length);
     data_str[string_length] = static_cast<uint8_t>((crc >> BITS_PER_BYTE) & 0xFF);
@@ -90,7 +88,6 @@ bool EEPROM::get_str(uint16_t address, std::string &out_str){
     }
     if (read_buff[0] != 0 && crc16(read_buff, (term_zero_index + 3)) == 0 && term_zero_index < (ENTRY_SIZE - 2)) {
         out_str = std::string(reinterpret_cast<char*>(read_buff), term_zero_index);
-//        Logger::log("%s\n", out_str.c_str());
         return true;
     }else{
         out_str.clear();
@@ -120,10 +117,8 @@ void EEPROM::put_log_entry(const char *str) {
         string_length = STRLEN_EEPROM;
     }
     uint8_t log_buf[string_length + CRC_CHAR];
-    for (int a = 0; a < strlen(str); ++a) {
-        log_buf[a] = (uint8_t) str[a];
-    }
-    log_buf[strlen(str)] = '\0';
+    strncpy((char*)log_buf, str, string_length - 1);
+    log_buf[string_length - 1] = '\0';
     uint16_t crc = crc16(log_buf, string_length);
     log_buf[string_length] = (uint8_t)(crc >> BITS_PER_BYTE);
     log_buf[string_length + 1] = (uint8_t)crc;
